@@ -557,7 +557,7 @@ Always include a friendly plain-text response. Keep it concise. Today is ${today
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+aiKey,'HTTP-Referer':'worklog-app','X-Title':'Work Log'},
       body:JSON.stringify({
-        model:'meta-llama/llama-3.3-8b-instruct:free',
+        model:'mistralai/mistral-7b-instruct:free',
         messages:[
           {role:'system', content: systemPrompt},
           {role:'user', content:`My work log:\n${context}\n\nRequest: ${text}`}
