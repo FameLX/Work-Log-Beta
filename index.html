@@ -240,10 +240,10 @@ svg.icon.sm{width:13px;height:13px;}
   <div id="ai-setup" style="padding:16px;border-bottom:1px solid var(--border);background:var(--surface2);">
     <div style="font-size:13px;font-weight:500;margin-bottom:6px;">Connect AI (free)</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6;">
-      Get a free Gemini API key from <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--info)">aistudio.google.com/apikey</a> — free, no credit card needed. Click <strong>Create API key</strong>, copy it and paste below.
+      Get a free API key from <a href="https://console.groq.com/keys" target="_blank" style="color:var(--info)">console.groq.com/keys</a> — free, no credit card needed. Sign in with Google, click <strong>Create API Key</strong>, copy and paste below.
     </div>
     <div style="display:flex;gap:6px;">
-      <input type="password" id="ai-key-input" placeholder="AIza…" style="flex:1;font-size:12px;padding:6px 9px;"/>
+      <input type="password" id="ai-key-input" placeholder="gsk_…" style="flex:1;font-size:12px;padding:6px 9px;"/>
       <button class="btn btn-primary btn-sm" onclick="saveAIKey()">Save</button>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:6px;">Key is saved locally in your browser only.</div>
@@ -252,16 +252,18 @@ svg.icon.sm{width:13px;height:13px;}
   <div id="ai-model-row" style="display:none;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);align-items:center;gap:8px;">
     <span style="font-size:12px;color:var(--text2);flex-shrink:0;">Model:</span>
     <select id="ai-model-select" style="flex:1;font-size:12px;padding:4px 8px;" onchange="saveModel()">
-      <option value="gemini-2.0-flash">Gemini 2.0 Flash (recommended)</option>
-      <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-      <option value="gemini-1.5-flash-8b">Gemini 1.5 Flash 8B (fastest)</option>
+      <option value="llama-3.3-70b-versatile">Llama 3.3 70B (recommended)</option>
+      <option value="llama-3.1-8b-instant">Llama 3.1 8B (fastest)</option>
+      <option value="llama3-70b-8192">Llama 3 70B</option>
+      <option value="gemma2-9b-it">Gemma 2 9B (Google)</option>
+      <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
     </select>
     <button class="btn btn-sm" onclick="testModel()" style="font-size:11px;padding:4px 8px;flex-shrink:0;">Test</button>
     <button class="btn btn-sm btn-danger" onclick="disconnectAI()" style="font-size:11px;padding:4px 8px;flex-shrink:0;">Disconnect</button>
   </div>
   <div id="ai-custom-model-row" style="display:none;padding:0 16px 10px;background:var(--surface2);border-bottom:1px solid var(--border);">
     <input type="text" id="ai-custom-model-input" placeholder="e.g. mistralai/mistral-7b-instruct:free" style="font-size:12px;padding:6px 9px;" oninput="saveCustomModel()"/>
-    <div style="font-size:11px;color:var(--text3);margin-top:4px;">Find slugs at <a href="https://openrouter.ai/models" target="_blank" style="color:var(--info)">openrouter.ai/models</a></div>
+    <div style="font-size:11px;color:var(--text3);margin-top:4px;">Find model names at <a href="https://console.groq.com/docs/models" target="_blank" style="color:var(--info)">console.groq.com/docs/models</a></div>
   </div>
   <div class="ai-messages" id="ai-messages">
     <div class="ai-msg bot">Paste your free OpenRouter key above to get started. Once connected, I can summarise tasks, find overdue items, add or edit entries, and more.</div>
@@ -535,7 +537,7 @@ async function pushToGCal(entry){
 
 // ── AI Panel ───────────────────────────────────────────────────────────────
 let aiKey = localStorage.getItem('wl2_ai_key') || '';
-let aiModel = localStorage.getItem('wl2_ai_model') || 'gemini-2.0-flash';
+let aiModel = localStorage.getItem('wl2_ai_model') || 'llama-3.3-70b-versatile';
 
 function initAI(){
   if(aiKey){
@@ -554,7 +556,7 @@ function initAI(){
 
 function saveAIKey(){
   const k = document.getElementById('ai-key-input').value.trim();
-  if(!k){ toast('Please paste your Gemini API key.'); return; }
+  if(!k){ toast('Please paste your Groq API key (starts with gsk_).'); return; }
   aiKey = k; localStorage.setItem('wl2_ai_key', k);
   document.getElementById('ai-setup').style.display='none';
   const modelRow = document.getElementById('ai-model-row');
@@ -597,18 +599,10 @@ async function testModel(){
   const badge = document.getElementById('ai-model-badge');
   badge.textContent='Testing…'; badge.style.color='var(--warn)';
   try{
-    const isOAuthKey = aiKey.startsWith('AQ.') || aiKey.startsWith('ya29.');
-    const modelId = isOAuthKey ? 'gemini-2.0-flash-001' : aiModel;
-    const geminiUrl = isOAuthKey
-      ? `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent`
-      : `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${aiKey}`;
-    const geminiHeaders = isOAuthKey
-      ? {'Content-Type':'application/json', 'Authorization': `Bearer ${aiKey}`}
-      : {'Content-Type':'application/json'};
-    const resp = await fetch(geminiUrl,{
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
-      headers: geminiHeaders,
-      body:JSON.stringify({contents:[{role:'user',parts:[{text:'Reply with just the word OK.'}]}],generationConfig:{maxOutputTokens:5}})
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+aiKey},
+      body:JSON.stringify({model:aiModel, messages:[{role:'user',content:'Reply with just the word OK.'}], max_tokens:5})
     });
     const data = await resp.json();
     if(data.error){
@@ -616,12 +610,12 @@ async function testModel(){
       toast('Error: '+data.error.message.slice(0,80), 4000);
     } else {
       badge.textContent='Connected ✓'; badge.style.color='var(--success)';
-      toast('Gemini is working!');
+      toast('AI is working!');
       setTimeout(()=>{ badge.textContent='Connected'; },3000);
     }
   }catch{
     badge.textContent='Error'; badge.style.color='var(--danger)';
-    toast('Could not reach Gemini API.');
+    toast('Could not reach Groq API.');
   }
 }
 
@@ -654,27 +648,22 @@ When the user wants to EDIT an entry, include:
 
 Always include a friendly plain-text response. Keep it concise. Today is ${today()}.`;
   try{
-    const isOAuthKey = aiKey.startsWith('AQ.') || aiKey.startsWith('ya29.');
-    const modelId = isOAuthKey ? 'gemini-2.0-flash-001' : aiModel;
-    const geminiUrl = isOAuthKey
-      ? `https://generativelanguage.googleapis.com/v1/models/${modelId}:generateContent`
-      : `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${aiKey}`;
-    const geminiHeaders = isOAuthKey
-      ? {'Content-Type':'application/json', 'Authorization': `Bearer ${aiKey}`}
-      : {'Content-Type':'application/json'};
-    const resp = await fetch(geminiUrl,{
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
-      headers: geminiHeaders,
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+aiKey},
       body:JSON.stringify({
-        systemInstruction:{parts:[{text: systemPrompt}]},
-        contents:[{role:'user', parts:[{text:`My work log:\n${context}\n\nRequest: ${text}`}]}],
-        generationConfig:{maxOutputTokens:1000}
+        model: aiModel,
+        messages:[
+          {role:'system', content: systemPrompt},
+          {role:'user', content:`My work log:\n${context}\n\nRequest: ${text}`}
+        ],
+        max_tokens: 1000
       })
     });
     const data = await resp.json();
     removeMsg(loadId);
     if(data.error){ appendMsg('Error: '+data.error.message,'bot'); return; }
-    const full = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const full = data.choices?.[0]?.message?.content || '';
     const actionMatch = full.match(/<action>([\s\S]*?)<\/action>/);
     const displayText = full.replace(/<action>[\s\S]*?<\/action>/g,'').trim();
     appendMsg(displayText || '(done)', 'bot');
