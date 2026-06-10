@@ -211,9 +211,13 @@ svg.icon.sm{width:13px;height:13px;}
   <!-- MAIN: Entries -->
   <main class="main">
     <div class="main-header">
-      <h1>Entries</h1>
+      <h1 id="main-title">Entries</h1>
       <span class="entry-count" id="entry-count">0</span>
       <div class="main-header-spacer"></div>
+      <button class="btn btn-sm" id="view-toggle-btn" onclick="toggleView()" style="gap:5px;">
+        <svg class="icon sm" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg>
+        <span id="view-toggle-label">View Archive</span><span id="archive-count" style="font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 7px;margin-left:2px;"></span>
+      </button>
       <select class="sort-select" onchange="setSortAndRender(this.value)">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
@@ -254,9 +258,6 @@ svg.icon.sm{width:13px;height:13px;}
     <select id="ai-model-select" style="flex:1;font-size:12px;padding:4px 8px;" onchange="saveModel()">
       <option value="llama-3.3-70b-versatile">Llama 3.3 70B (recommended)</option>
       <option value="llama-3.1-8b-instant">Llama 3.1 8B (fastest)</option>
-      <option value="llama3-70b-8192">Llama 3 70B</option>
-      <option value="gemma2-9b-it">Gemma 2 9B (Google)</option>
-      <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
     </select>
     <button class="btn btn-sm" onclick="testModel()" style="font-size:11px;padding:4px 8px;flex-shrink:0;">Test</button>
     <button class="btn btn-sm btn-danger" onclick="disconnectAI()" style="font-size:11px;padding:4px 8px;flex-shrink:0;">Disconnect</button>
@@ -309,6 +310,8 @@ svg.icon.sm{width:13px;height:13px;}
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
 let entries = JSON.parse(localStorage.getItem('wl2_entries') || '[]');
+let archived = JSON.parse(localStorage.getItem('wl2_archived') || '[]');
+let viewMode = 'active'; // 'active' or 'archive'
 let gcalToken = localStorage.getItem('wl2_gcal_token') || null;
 let filterType = 'All';
 let sortMode = 'newest';
@@ -363,7 +366,32 @@ function saveEdit(id){
   save(); render(); toast('Entry updated.');
 }
 
-function save(){ localStorage.setItem('wl2_entries', JSON.stringify(entries)); }
+function save(){ 
+  localStorage.setItem('wl2_entries', JSON.stringify(entries)); 
+  localStorage.setItem('wl2_archived', JSON.stringify(archived));
+}
+
+function archiveEntry(id){
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  e.archivedAt = new Date().toISOString();
+  archived.unshift(e);
+  entries = entries.filter(x=>x.id!==id);
+  save(); render(); toast('Entry archived. View it in Archive.');
+}
+
+function restoreEntry(id){
+  const e = archived.find(x=>x.id===id); if(!e) return;
+  delete e.archivedAt;
+  entries.unshift(e);
+  archived = archived.filter(x=>x.id!==id);
+  save(); render(); toast('Entry restored to active.');
+}
+
+function deleteArchived(id){
+  if(!confirm('Permanently delete this entry? This cannot be undone.')) return;
+  archived = archived.filter(x=>x.id!==id);
+  save(); render(); toast('Entry permanently deleted.');
+}
 function v(id){ return document.getElementById(id)?.value.trim() || ''; }
 
 function clearForm(){
@@ -373,31 +401,47 @@ function clearForm(){
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
-function sorted(){
-  const copy = [...entries];
+function sorted(source){
+  const copy = [...source];
   if(sortMode==='oldest') return copy.reverse();
   if(sortMode==='deadline') return copy.sort((a,b)=>{ if(!a.deadline) return 1; if(!b.deadline) return -1; return a.deadline.localeCompare(b.deadline); });
   if(sortMode==='name') return copy.sort((a,b)=>a.name.localeCompare(b.name));
   return copy;
 }
 
+function toggleView(){
+  viewMode = viewMode==='active' ? 'archive' : 'active';
+  filterType = 'All';
+  document.getElementById('view-toggle-label').textContent = viewMode==='active' ? 'View Archive' : 'Back to Active';
+  document.getElementById('main-title').textContent = viewMode==='active' ? 'Entries' : 'Archive';
+  document.querySelector('.sidebar').style.opacity = viewMode==='archive' ? '0.4' : '1';
+  document.querySelector('.sidebar').style.pointerEvents = viewMode==='archive' ? 'none' : '';
+  render();
+}
+
 function render(){
-  // filters
-  const types = ['All', ...new Set(entries.map(e=>e.type).filter(Boolean))];
+  const source = viewMode==='active' ? entries : archived;
+  const types = ['All', ...new Set(source.map(e=>e.type).filter(Boolean))];
   const fb = document.getElementById('filter-bar');
   fb.innerHTML = types.map(t=>`<button class="filter-chip${filterType===t?' active':''}" onclick="setFilter('${esc(t)}')">${esc(t)}</button>`).join('');
 
-  const shown = filterType==='All' ? sorted() : sorted().filter(e=>e.type===filterType);
+  // Update archive count badge
+  const archiveBadge = document.getElementById('archive-count');
+  if(archiveBadge) archiveBadge.textContent = archived.length > 0 ? archived.length : '';
+
+  const shown = filterType==='All' ? sorted(source) : sorted(source).filter(e=>e.type===filterType);
   document.getElementById('entry-count').textContent = shown.length;
   const list = document.getElementById('entries-list');
   if(!shown.length){
-    list.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><p>No entries yet.<br>Add your first task using the form.</p></div>`;
+    const msg = viewMode==='archive' ? 'No archived entries.' : 'No entries yet.<br>Add your first task using the form.';
+    const icon = viewMode==='archive' ? '🗄️' : '📋';
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">${icon}</div><p>${msg}</p></div>`;
     return;
   }
-  list.innerHTML = shown.map(e => entryHTML(e)).join('');
+  list.innerHTML = shown.map(e => entryHTML(e, viewMode==='archive')).join('');
 }
 
-function entryHTML(e){
+function entryHTML(e, isArchived=false){
   const status = deadlineStatus(e.deadline);
   const isEditing = editingId === e.id;
   const typeOpts = ['Task','Meeting','Review','Report','Research','Other'].map(o=>`<option${e.type===o?' selected':''}>${o}</option>`).join('');
@@ -434,9 +478,15 @@ function entryHTML(e){
           </div>
         </div>
         <div class="entry-actions">
-          ${gcalToken&&e.deadline?`<button class="icon-btn cal" title="Sync to Google Calendar" onclick="pushToGCal(entries.find(x=>x.id===${e.id}))">${calIcon()}</button>`:''}
-          <button class="icon-btn" title="Edit entry" onclick="startEdit(${e.id})">${editIcon()}</button>
-          <button class="icon-btn del" title="Delete entry" onclick="deleteEntry(${e.id})">${trashIcon()}</button>
+          ${isArchived ? `
+            <button class="icon-btn" title="Restore to active" onclick="restoreEntry(${e.id})" style="color:var(--success);">${restoreIcon()}</button>
+            <button class="icon-btn del" title="Delete permanently" onclick="deleteArchived(${e.id})">${trashIcon()}</button>
+          ` : `
+            ${gcalToken&&e.deadline?`<button class="icon-btn cal" title="Sync to Google Calendar" onclick="pushToGCal(entries.find(x=>x.id===${e.id}))">${calIcon()}</button>`:''}
+            <button class="icon-btn" title="Edit entry" onclick="startEdit(${e.id})">${editIcon()}</button>
+            <button class="icon-btn" title="Archive entry" onclick="archiveEntry(${e.id})" style="color:var(--text3);">${archiveIcon()}</button>
+            <button class="icon-btn del" title="Delete permanently" onclick="deleteEntry(${e.id})">${trashIcon()}</button>
+          `}
         </div>
       </div>
     </div>`;
@@ -465,6 +515,8 @@ function setSortAndRender(v){ sortMode=v; render(); }
 // ── Icons ──────────────────────────────────────────────────────────────────
 function editIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;}
 function trashIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;}
+function archiveIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;}
+function restoreIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>`;}
 function calIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;}
 
 // ── Export ─────────────────────────────────────────────────────────────────
@@ -688,8 +740,9 @@ Always include a friendly plain-text response. Keep it concise. Today is ${today
 }
 
 function buildContext(){
-  if(!entries.length) return '(no entries yet)';
-  return entries.map(e=>`[ID:${e.id}] ${e.name} | Type:${e.type||'—'} | Deadline:${e.deadline||'—'} | Remark:${e.remark||'—'}`).join('\n');
+  const active = entries.length ? 'ACTIVE:\n'+entries.map(e=>`[ID:${e.id}] ${e.name} | Type:${e.type||'—'} | Deadline:${e.deadline||'—'} | Remark:${e.remark||'—'}`).join('\n') : 'ACTIVE: (none)';
+  const arch = archived.length ? '\nARCHIVED:\n'+archived.map(e=>`[ID:${e.id}] ${e.name} | Type:${e.type||'—'} | Deadline:${e.deadline||'—'}`).join('\n') : '';
+  return active + arch;
 }
 
 let msgCounter = 0;
