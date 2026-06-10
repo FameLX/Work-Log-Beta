@@ -41,13 +41,13 @@ a{color:inherit;}
 .sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 20px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;}
 .section-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
 label.field-label{display:block;font-size:13px;color:var(--text2);margin-bottom:5px;font-weight:400;}
-input[type=text],input[type=date],textarea,select{
+input[type=text],input[type=date],input[type=time],textarea,select{
   display:block;width:100%;font-family:var(--font);font-size:14px;
   background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);
   padding:8px 11px;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;
   appearance:none;-webkit-appearance:none;
 }
-input[type=text]:focus,input[type=date]:focus,textarea:focus,select:focus{
+input[type=text]:focus,input[type=date]:focus,input[type=time]:focus,textarea:focus,select:focus{
   border-color:var(--border2);box-shadow:0 0 0 3px rgba(26,25,23,.06);
 }
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6860' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
@@ -99,7 +99,7 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .icon-btn.cal:hover{background:var(--info-bg);color:var(--info);}
 /* Edit mode fields */
 .edit-fields{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
-.edit-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.edit-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
 .edit-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:6px;}
 
 /* AI Chat Panel */
@@ -147,6 +147,7 @@ svg.icon.sm{width:13px;height:13px;}
   .ai-panel{width:100%;top:56px;}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -184,7 +185,10 @@ svg.icon.sm{width:13px;height:13px;}
       </div>
       <div class="form-group">
         <label class="field-label" for="f-deadline">Deadline</label>
-        <input type="date" id="f-deadline"/>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <input type="date" id="f-deadline"/>
+          <input type="time" id="f-time" placeholder="Time (optional)" style="font-size:13px;"/>
+        </div>
       </div>
       <div class="form-group">
         <label class="field-label" for="f-remark">Remark</label>
@@ -203,6 +207,7 @@ svg.icon.sm{width:13px;height:13px;}
       <div class="section-label">Export</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn btn-sm" onclick="exportCSV()">Export CSV</button>
+        <button class="btn btn-sm" onclick="exportXLSX()">Export Excel</button>
         <button class="btn btn-sm" onclick="exportJSON()">Export JSON</button>
       </div>
     </div>
@@ -290,7 +295,7 @@ svg.icon.sm{width:13px;height:13px;}
     <ol class="modal-steps">
       <li>Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--info)">console.cloud.google.com</a> and sign in with any Google account. Click <strong>Select a project → New Project</strong>, give it any name, click Create.</li>
       <li>In the search bar type <strong>Google Calendar API</strong>, click it, then click <strong>Enable</strong>.</li>
-      <li>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>. Choose <em>Web application</em>. Under "Authorised JavaScript origins" add <span class="mono">null</span> (for local files) or your hosted URL. Click Create.</li>
+      <li>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>. Choose <em>Web application</em>. Under "Authorised JavaScript origins" add <span class="mono">https://famelx.github.io</span> and under "Authorised redirect URIs" add <span class="mono">https://famelx.github.io/Work-Log/</span>. Click Create.</li>
       <li>Copy the <strong>Client ID</strong> shown (ends in <span class="mono">.apps.googleusercontent.com</span>) and paste it below.</li>
     </ol>
     <div class="form-group"><label class="field-label">OAuth Client ID</label><input type="text" id="gcal-client-id" placeholder="xxxx.apps.googleusercontent.com"/></div>
@@ -334,7 +339,8 @@ function addEntry(){
   const name = v('f-name'); const type = v('f-type');
   const deadline = v('f-deadline'); const remark = v('f-remark');
   if(!name){ toast('Enter a work name.'); return; }
-  const entry = {id: Date.now(), name, type, deadline, remark, created: new Date().toISOString()};
+  const time = v('f-time');
+  const entry = {id: Date.now(), name, type, deadline, time, remark, created: new Date().toISOString()};
   entries.unshift(entry);
   save(); render(); clearForm();
   toast('Entry added.');
@@ -343,6 +349,8 @@ function addEntry(){
 
 function deleteEntry(id){
   if(!confirm('Delete this entry?')) return;
+  const entry = entries.find(e=>e.id===id);
+  if(entry) deleteFromGCal(entry); // sync delete — no-op if no token or no gcalEventId
   entries = entries.filter(e=>e.id!==id);
   save(); render(); toast('Entry deleted.');
 }
@@ -361,9 +369,12 @@ function saveEdit(id){
   e.name = name;
   e.type = v('edit-type-'+id);
   e.deadline = v('edit-deadline-'+id);
+  e.time = v('edit-time-'+id);
   e.remark = v('edit-remark-'+id);
   editingId = null;
   save(); render(); toast('Entry updated.');
+  // Re-sync to Google Calendar if connected and has deadline (PATCH if existing event, else skip)
+  if(gcalToken && e.deadline && e.gcalEventId) patchGCal(e);
 }
 
 function save(){ 
@@ -389,13 +400,15 @@ function restoreEntry(id){
 
 function deleteArchived(id){
   if(!confirm('Permanently delete this entry? This cannot be undone.')) return;
+  const entry = archived.find(x=>x.id===id);
+  if(entry) deleteFromGCal(entry);
   archived = archived.filter(x=>x.id!==id);
   save(); render(); toast('Entry permanently deleted.');
 }
 function v(id){ return document.getElementById(id)?.value.trim() || ''; }
 
 function clearForm(){
-  ['f-name','f-remark'].forEach(id=>document.getElementById(id).value='');
+  ['f-name','f-remark','f-time'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-type').value='';
   document.getElementById('f-deadline').value=today();
 }
@@ -456,6 +469,7 @@ function entryHTML(e, isArchived=false){
                 <select id="edit-type-${e.id}"><option value="">— type —</option>${typeOpts}</select>
               </div>
               <div><label class="field-label">Deadline</label><input type="date" id="edit-deadline-${e.id}" value="${e.deadline||''}"/></div>
+              <div><label class="field-label">Time</label><input type="time" id="edit-time-${e.id}" value="${e.time||''}"/></div>
             </div>
             <div><label class="field-label">Remark</label><textarea id="edit-remark-${e.id}" style="min-height:70px;">${esc(e.remark||'')}</textarea></div>
             <div class="edit-actions">
@@ -474,7 +488,7 @@ function entryHTML(e, isArchived=false){
           ${e.remark?`<div class="entry-remark">${esc(e.remark)}</div>`:''}
           <div class="entry-meta">
             ${e.type?`<span class="chip type">${esc(e.type)}</span>`:''}
-            ${e.deadline?`<span class="chip deadline${status?' '+status:''}">${fmtDate(e.deadline)}${status===' overdue'?' · overdue':status===' soon'?' · soon':''}</span>`:''}
+            ${e.deadline?`<span class="chip deadline${status?' '+status:''}">${fmtDate(e.deadline)}${e.time?' · '+fmtTime(e.time):''}${status===' overdue'?' · overdue':status===' soon'?' · soon':''}</span>`:''}
           </div>
         </div>
         <div class="entry-actions">
@@ -508,6 +522,12 @@ function fmtDate(d){
   return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]+' '+parseInt(day)+', '+y;
 }
 
+function fmtTime(t){
+  if(!t) return '';
+  const [h,m] = t.split(':');
+  const hr = parseInt(h);
+  return (hr%12||12)+':'+m+(hr<12?'AM':'PM');
+}
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function setFilter(t){ filterType=t; render(); }
 function setSortAndRender(v){ sortMode=v; render(); }
@@ -521,11 +541,25 @@ function calIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><rect x="3" y
 
 // ── Export ─────────────────────────────────────────────────────────────────
 function exportCSV(){
-  const rows = [['Name','Type','Deadline','Remark','Created'],...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.remark||'',e.created])];
+  const rows = [['Name','Type','Deadline','Time','Remark','Created'],...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created])];
   const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  dl('worklog.csv','data:text/csv;charset=utf-8,'+encodeURIComponent(csv));
+  // \uFEFF = UTF-8 BOM — required for Excel to correctly read Thai and other non-ASCII characters
+  dl('worklog.csv','data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv));
 }
 function exportJSON(){ dl('worklog.json','data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(entries,null,2))); }
+function exportXLSX(){
+  if(typeof XLSX === 'undefined'){ toast('SheetJS not loaded yet, try again.'); return; }
+  const rows = [
+    ['Name','Type','Deadline','Time','Remark','Created'],
+    ...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Column widths
+  ws['!cols'] = [{wch:30},{wch:12},{wch:14},{wch:10},{wch:40},{wch:22}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Work Log');
+  XLSX.writeFile(wb, 'worklog.xlsx');
+}
 function dl(name,href){ const a=document.createElement('a'); a.href=href; a.download=name; a.click(); }
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -558,32 +592,90 @@ function gcalSaveToken(){
   closeGCalModal(); toast('Google Calendar connected!'); render();
 }
 
+function buildGCalEvent(entry){
+  const isTask = entry.type === 'Task';
+  const title = isTask ? `✓ Task: ${entry.name}` : entry.name;
+  const desc = [
+    entry.type ? `Type: ${entry.type}` : '',
+    entry.remark || '',
+    isTask ? 'Created from Work Log (Task)' : ''
+  ].filter(Boolean).join('\n');
+  const colorId = isTask ? '2' : undefined;
+  let start, end;
+  if(entry.time){
+    // Timed event — use dateTime
+    start = {dateTime: `${entry.deadline}T${entry.time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone};
+    end   = {dateTime: `${entry.deadline}T${entry.time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone};
+  } else {
+    // All-day event
+    start = {date: entry.deadline};
+    end   = {date: entry.deadline};
+  }
+  return {summary:title, description:desc, start, end, ...(colorId&&{colorId})};
+}
+
 async function pushToGCal(entry){
   if(!gcalToken||!entry?.deadline){ toast('No deadline set.'); return; }
   try{
-    const isTask = entry.type === 'Task';
-    const title = isTask ? `✓ Task: ${entry.name}` : entry.name;
-    const desc = [
-      entry.type ? `Type: ${entry.type}` : '',
-      entry.remark || '',
-      isTask ? 'Created from Work Log (Task)' : ''
-    ].filter(Boolean).join('\n');
-    const colorId = isTask ? '2' : undefined; // Sage green for tasks
-    const eventBody = {
-      summary: title,
-      description: desc,
-      start:{date:entry.deadline},
-      end:{date:entry.deadline},
-      ...(colorId && {colorId})
-    };
+    // ── Duplicate check ──────────────────────────────────────────────────
+    const dayStart = entry.deadline+'T00:00:00Z';
+    const dayEnd   = entry.deadline+'T23:59:59Z';
+    const listRes  = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${dayStart}&timeMax=${dayEnd}&singleEvents=true`,
+      {headers:{Authorization:`Bearer ${gcalToken}`}}
+    );
+    if(listRes.ok){
+      const listData = await listRes.json();
+      const titleToCheck = (entry.type==='Task'?'✓ Task: ':'')+entry.name;
+      const dup = (listData.items||[]).find(ev=>ev.summary===titleToCheck);
+      if(dup){
+        // Store the existing event ID so future edits can PATCH it
+        entry.gcalEventId = dup.id;
+        save();
+        toast(`Already in Calendar on ${fmtDate(entry.deadline)} — skipped.`);
+        return;
+      }
+    }
+    // ── Create new event ─────────────────────────────────────────────────
     const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
       method:'POST', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
-      body:JSON.stringify(eventBody)
+      body:JSON.stringify(buildGCalEvent(entry))
     });
     if(res.ok){
-      const label = isTask ? 'Task' : 'Event';
+      const created = await res.json();
+      entry.gcalEventId = created.id; // save for future delete/patch
+      save();
+      const label = entry.type==='Task' ? 'Task' : 'Event';
       toast(`"${entry.name}" added to Google Calendar as ${label}.`);
-    } else toast('Calendar error — token may have expired.');
+    } else {
+      const err = await res.json();
+      toast('Calendar error — ' + (err.error?.message||'token may have expired.'));
+    }
+  }catch(e){ toast('Could not reach Google Calendar.'); }
+}
+
+async function patchGCal(entry){
+  if(!gcalToken||!entry?.gcalEventId) return;
+  try{
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${entry.gcalEventId}`,
+      {method:'PATCH', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
+       body:JSON.stringify(buildGCalEvent(entry))}
+    );
+    if(res.ok) toast(`Calendar event updated for "${entry.name}".`);
+    else toast('Calendar update failed — token may have expired.');
+  }catch{ toast('Could not reach Google Calendar.'); }
+}
+
+async function deleteFromGCal(entry){
+  if(!gcalToken||!entry?.gcalEventId) return;
+  try{
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${entry.gcalEventId}`,
+      {method:'DELETE', headers:{Authorization:`Bearer ${gcalToken}`}}
+    );
+    if(res.ok||res.status===204) toast(`Calendar event removed for "${entry.name}".`);
+    else toast('Calendar delete failed — token may have expired. Remove manually.');
   }catch{ toast('Could not reach Google Calendar.'); }
 }
 
@@ -735,7 +827,7 @@ Always include a friendly plain-text response. Keep it concise. Today is ${today
     }
   }catch(err){
     removeMsg(loadId);
-    appendMsg('Could not reach OpenRouter. Check your internet connection or API key.','bot');
+    appendMsg('Could not reach Groq. Check your internet connection or API key.','bot');
   }
 }
 
