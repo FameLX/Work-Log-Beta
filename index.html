@@ -195,7 +195,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo">Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v2.1</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v2.1</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -352,7 +352,7 @@ svg.icon.sm{width:13px;height:13px;}
     </ol>
     <div class="form-group"><label class="field-label">OAuth Client ID</label><input type="text" id="gcal-client-id" placeholder="xxxx.apps.googleusercontent.com"/></div>
     <div id="gcal-token-section" style="display:none;">
-      <p style="font-size:13px;color:var(--text2);margin:10px 0 8px;line-height:1.6;">A Google sign-in window opened. After you approve access, the page will redirect. Copy the value after <span class="mono">access_token=</span> in that URL and paste it below:</p>
+      <p style="font-size:13px;color:var(--text2);margin:10px 0 8px;line-height:1.6;">A Google sign-in window opened. Approve access and it should connect <strong>automatically</strong> — this window will update on its own. If it doesn't (popup blocked, etc.), copy the value after <span class="mono">access_token=</span> in the popup's URL and paste it below:</p>
       <div class="form-group"><label class="field-label">Access token</label><input type="text" id="gcal-token-input" placeholder="ya29.a0…"/></div>
     </div>
     <div class="modal-actions" id="gcal-modal-actions">
@@ -498,6 +498,30 @@ let typeGCalIds = JSON.parse(localStorage.getItem('wl2_type_gcal_ids') || '{}');
 let uiColors = JSON.parse(localStorage.getItem('wl2_ui_colors') || '{}');
 
 function allTypes(){ return [...BUILTIN_TYPES, ...customTypes]; }
+
+// ── OAuth token auto-capture ───────────────────────────────────────────────
+// If this page load is the OAuth popup (URL has #access_token=...), grab the
+// token, hand it back to the window that opened us, then close.
+(function captureOAuthRedirect(){
+  if(location.hash && location.hash.indexOf('access_token=')!==-1){
+    const params = new URLSearchParams(location.hash.slice(1));
+    const token = params.get('access_token');
+    if(token && window.opener){
+      try{ window.opener.postMessage({type:'wl2_gcal_token', token}, location.origin); }catch(e){}
+      // Clean the token out of the address bar then close the popup.
+      history.replaceState(null,'',location.pathname + location.search);
+      window.close();
+    }
+  }
+})();
+
+// Main-window listener: receive the token the popup sent and connect.
+window.addEventListener('message', function(ev){
+  if(ev.origin !== location.origin) return;
+  if(ev.data && ev.data.type==='wl2_gcal_token' && ev.data.token){
+    gcalApplyToken(ev.data.token);
+  }
+});
 
 // ── Init ───────────────────────────────────────────────────────────────────
 (function init(){
@@ -839,14 +863,22 @@ function gcalAuthorise(){
   if(!cid){ toast('Paste your Client ID first.'); return; }
   const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks');
   const redirect = encodeURIComponent('https://famelx.github.io/Work-Log/');
-  window.open(`https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(cid)}&redirect_uri=${redirect}&response_type=token&scope=${scope}&prompt=consent`,'_blank','width=520,height=620');
+  window.open(`https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(cid)}&redirect_uri=${redirect}&response_type=token&scope=${scope}&prompt=consent`,'gcal_oauth','width=520,height=620');
+  // The popup will auto-send the token back via postMessage; show the manual
+  // paste box only as a fallback in case the popup can't reach us.
   document.getElementById('gcal-token-section').style.display='block';
-  document.getElementById('gcal-modal-actions').innerHTML=`<button class="btn" onclick="closeGCalModal()">Cancel</button><button class="btn btn-primary" onclick="gcalSaveToken()">Connect</button>`;
+  document.getElementById('gcal-modal-actions').innerHTML=`<button class="btn" onclick="closeGCalModal()">Cancel</button><button class="btn btn-primary" onclick="gcalSaveToken()">Connect manually</button>`;
 }
 
 function gcalSaveToken(){
   const t = document.getElementById('gcal-token-input').value.trim();
   if(!t){ toast('Paste the access_token first.'); return; }
+  gcalApplyToken(t);
+}
+
+// Shared: store the token and flip the UI to connected. Called both by the
+// automatic postMessage capture and by the manual-paste fallback.
+function gcalApplyToken(t){
   gcalToken=t; localStorage.setItem('wl2_gcal_token',t);
   document.getElementById('gcal-pill').classList.add('connected');
   document.getElementById('gcal-pill-text').textContent='Calendar connected';
