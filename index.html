@@ -168,6 +168,22 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .cl-items{font-size:12px;color:var(--text2);line-height:1.9;padding-left:0;list-style:none;}
 .cl-items li::before{content:'·  ';color:var(--text3);}
 
+/* Due/Overdue alert modal */
+.due-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:120;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.due-modal-overlay.open{opacity:1;pointer-events:auto;}
+.due-modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:520px;max-width:calc(100vw - 32px);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.18);}
+.due-modal-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;}
+.due-modal-header h2{font-size:16px;font-weight:500;flex:1;}
+.due-modal-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.due-item{border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.due-item.overdue{border-color:rgba(153,27,27,.3);background:var(--danger-bg);}
+.due-item.today{border-color:rgba(146,64,14,.3);background:var(--warn-bg);}
+.due-item-name{font-size:14px;font-weight:500;margin-bottom:4px;}
+.due-item-meta{font-size:12px;color:var(--text2);margin-bottom:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.due-item-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.due-item-actions input[type=date]{font-size:12px;padding:5px 8px;width:auto;}
+.due-modal-footer{display:flex;justify-content:flex-end;flex-shrink:0;}
+
 /* Deadline range */
 .deadline-range-sep{font-size:12px;color:var(--text3);display:flex;align-items:center;padding:0 2px;flex-shrink:0;}
 
@@ -275,7 +291,7 @@ svg.icon.sm{width:13px;height:13px;}
       <select class="sort-select" id="sort-select" onchange="setSortAndRender(this.value)">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
-        <option value="deadline">By deadline</option>
+        <option value="deadline" selected>By deadline</option>
         <option value="name">By name A–Z</option>
       </select>
       <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle sort direction">
@@ -324,7 +340,7 @@ svg.icon.sm{width:13px;height:13px;}
     <div style="font-size:11px;color:var(--text3);margin-top:4px;">Find model names at <a href="https://console.groq.com/docs/models" target="_blank" style="color:var(--info)">console.groq.com/docs/models</a></div>
   </div>
   <div class="ai-messages" id="ai-messages">
-    <div class="ai-msg bot">Paste your free OpenRouter key above to get started. Once connected, I can summarise tasks, find overdue items, add or edit entries, and more.</div>
+    <div class="ai-msg bot">Paste your free Groq key above to get started. Once connected, I can summarise tasks, find overdue items, add or edit entries, and more.</div>
   </div>
   <div class="ai-suggestions">
     <button class="ai-suggest" onclick="aiSuggest('Summarise my current tasks')">Summarise tasks</button>
@@ -343,21 +359,39 @@ svg.icon.sm{width:13px;height:13px;}
   <div class="modal">
     <h2>Connect Google Calendar</h2>
     <p style="color:var(--success);background:var(--success-bg);padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;">✓ The Google Calendar API is completely free — no subscription needed. You only need a free Google account.</p>
-    <p>One-time setup (about 5 minutes):</p>
+    <p>One-time setup (about 5 minutes). After this, connecting is just: <strong>1. Paste Client ID → 2. Click Authorise → 3. Approve in popup</strong> (that's it!):</p>
     <ol class="modal-steps">
       <li>Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--info)">console.cloud.google.com</a> and sign in with any Google account. Click <strong>Select a project → New Project</strong>, give it any name, click Create.</li>
-      <li>In the search bar type <strong>Google Calendar API</strong>, click it, then click <strong>Enable</strong>. Then do the same for <strong>Tasks API</strong>.</li>
+      <li>In the search bar type <strong>Google Calendar API</strong>, click it, then click <strong>Enable</strong>. Then do the same for <strong>Google Tasks API</strong>.</li>
       <li>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>. Choose <em>Web application</em>. Under "Authorised JavaScript origins" add <span class="mono">https://famelx.github.io</span> and under "Authorised redirect URIs" add <span class="mono">https://famelx.github.io/Work-Log/</span>. Click Create.</li>
-      <li>Copy the <strong>Client ID</strong> shown (ends in <span class="mono">.apps.googleusercontent.com</span>) and paste it below.</li>
+      <li>Copy the <strong>Client ID</strong> (the long string ending in <span class="mono">.apps.googleusercontent.com</span>) and paste it below, then click <strong>Authorise with Google</strong>.</li>
     </ol>
     <div class="form-group"><label class="field-label">OAuth Client ID</label><input type="text" id="gcal-client-id" placeholder="xxxx.apps.googleusercontent.com"/></div>
     <div id="gcal-token-section" style="display:none;">
-      <p style="font-size:13px;color:var(--text2);margin:10px 0 8px;line-height:1.6;">A Google sign-in window opened. Approve access and it should connect <strong>automatically</strong> — this window will update on its own. If it doesn't (popup blocked, etc.), copy the value after <span class="mono">access_token=</span> in the popup's URL and paste it below:</p>
-      <div class="form-group"><label class="field-label">Access token</label><input type="text" id="gcal-token-input" placeholder="ya29.a0…"/></div>
+      <p style="font-size:13px;color:var(--success);background:var(--success-bg);padding:8px 12px;border-radius:8px;margin:12px 0 8px;line-height:1.6;"><strong>✓ Popup opened.</strong> A Google sign-in window appeared. <strong>Just approve access</strong> — this page will automatically detect it and connect. No copy-paste needed!</p>
+      <p style="font-size:12px;color:var(--text3);margin:12px 0 8px;line-height:1.5;"><em>If the popup was blocked or something goes wrong, you can manually paste the token as a fallback:</em></p>
+      <div class="form-group"><label class="field-label">Access token (fallback only)</label><input type="text" id="gcal-token-input" placeholder="ya29.a0…"/></div>
     </div>
     <div class="modal-actions" id="gcal-modal-actions">
       <button class="btn" onclick="closeGCalModal()">Cancel</button>
       <button class="btn btn-primary" onclick="gcalAuthorise()">Authorise with Google</button>
+    </div>
+  </div>
+</div>
+
+<!-- Due / Overdue Alert Modal -->
+<div class="due-modal-overlay" id="due-modal">
+  <div class="due-modal">
+    <div class="due-modal-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--danger);flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h2>Tasks Needing Attention</h2>
+      <button class="icon-btn" onclick="closeDueModal()" title="Dismiss" style="margin-left:auto;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="due-modal-list" id="due-modal-list"></div>
+    <div class="due-modal-footer">
+      <button class="btn" onclick="closeDueModal()">Dismiss all</button>
     </div>
   </div>
 </div>
@@ -474,8 +508,9 @@ let archived = JSON.parse(localStorage.getItem('wl2_archived') || '[]');
 let viewMode = 'active'; // 'active' or 'archive'
 let gcalToken = localStorage.getItem('wl2_gcal_token') || null;
 let filterType = 'All';
-let sortMode = 'newest';
-let sortDir = 'desc'; // 'desc' or 'asc'
+let sortMode = 'deadline';
+let sortDir = 'asc'; // deadline default: soonest first
+let pinnedId = null; // newly added entry shown at top until sort changes
 let editingId = null;
 let syncMode = 'event'; // 'event' or 'task'
 
@@ -527,6 +562,9 @@ window.addEventListener('message', function(ev){
 (function init(){
   document.getElementById('f-deadline').value = today();
   document.getElementById('f-deadline-task').value = today();
+  // Sync sort direction button icon to default asc
+  const sdBtn = document.getElementById('sort-dir-btn');
+  if(sdBtn){ sdBtn.title='Currently ascending — click for descending'; sdBtn.innerHTML=`<svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`; }
   if(gcalToken){
     document.getElementById('gcal-pill').classList.add('connected');
     document.getElementById('gcal-pill-text').textContent = 'Calendar connected';
@@ -534,6 +572,7 @@ window.addEventListener('message', function(ev){
   applyUIColors();
   populateTypeSelects();
   render();
+  checkDueOverdue();
 })();
 
 function setSyncMode(mode){
@@ -560,6 +599,7 @@ function addEntry(){
   const gcalColorId = typeGCalIds[type] || undefined;
   const entry = {id: Date.now(), name, type, deadline, deadlineEnd, time, remark, color, gcalColorId, syncMode: isTask?'task':'event', created: new Date().toISOString()};
   entries.unshift(entry);
+  pinnedId = entry.id;
   save(); render(); clearForm();
   toast('Entry added.');
   if(gcalToken && deadline){
@@ -636,6 +676,57 @@ function deleteArchived(id){
   archived = archived.filter(x=>x.id!==id);
   save(); render(); toast('Entry permanently deleted.');
 }
+// ── Due / Overdue Alert Modal ──────────────────────────────────────────────
+function checkDueOverdue(){
+  const t = today();
+  const flagged = entries.filter(e => e.deadline && e.deadline <= t);
+  if(!flagged.length) return;
+
+  const list = document.getElementById('due-modal-list');
+  list.innerHTML = flagged.map(e => {
+    const isOverdue = e.deadline < t;
+    const label = isOverdue ? `Overdue · ${fmtDate(e.deadline)}` : 'Due today';
+    const typeChip = e.type ? `<span class="chip type">${esc(e.type)}</span>` : '';
+    return `
+    <div class="due-item ${isOverdue?'overdue':'today'}" id="due-item-${e.id}">
+      <div class="due-item-name">${esc(e.name)}</div>
+      <div class="due-item-meta">${typeChip}<span>${label}</span></div>
+      <div class="due-item-actions">
+        <button class="btn btn-sm btn-danger" onclick="dueArchive(${e.id})">Archive</button>
+        <input type="date" id="due-extend-${e.id}" value="${t}" min="${t}" style="width:140px;"/>
+        <button class="btn btn-sm" onclick="dueExtend(${e.id})">Extend to date</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('due-modal').classList.add('open');
+}
+
+function closeDueModal(){
+  document.getElementById('due-modal').classList.remove('open');
+}
+
+function dueArchive(id){
+  archiveEntry(id);
+  const el = document.getElementById('due-item-'+id);
+  if(el) el.remove();
+  if(!document.getElementById('due-modal-list').children.length) closeDueModal();
+}
+
+function dueExtend(id){
+  const newDate = document.getElementById('due-extend-'+id)?.value;
+  if(!newDate){ toast('Pick a date first.'); return; }
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  e.deadline = newDate;
+  if(e.syncMode==='task' && e.gcalTaskId && gcalToken) patchGTask(e);
+  else if(e.syncMode!=='task' && e.gcalEventId && gcalToken) patchGCal(e);
+  save(); render();
+  toast('Deadline extended to '+fmtDate(newDate)+'.');
+  const el = document.getElementById('due-item-'+id);
+  if(el) el.remove();
+  if(!document.getElementById('due-modal-list').children.length) closeDueModal();
+}
+
 function v(id){ return document.getElementById(id)?.value.trim() || ''; }
 
 function clearForm(){
@@ -655,11 +746,16 @@ function sorted(source){
   else if(sortMode==='name') result = copy.sort((a,b)=>a.name.localeCompare(b.name));
   else result = copy; // newest (already newest-first from unshift)
   if(sortDir==='asc') result = result.reverse();
+  // Pin newly added entry at top until user changes sort or refreshes
+  if(pinnedId !== null){
+    const idx = result.findIndex(e=>e.id===pinnedId);
+    if(idx > 0){ result.unshift(result.splice(idx,1)[0]); }
+  }
   return result;
 }
 
 function toggleSortDir(){
-  sortDir = sortDir==='desc' ? 'asc' : 'desc';
+  sortDir = sortDir==='desc' ? 'asc' : 'desc'; pinnedId=null;
   const btn = document.getElementById('sort-dir-btn');
   if(btn){
     btn.title = sortDir==='asc' ? 'Currently ascending — click for descending' : 'Currently descending — click for ascending';
@@ -814,7 +910,7 @@ function fmtTime(t){
 }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function setFilter(t){ filterType=t; render(); }
-function setSortAndRender(v){ sortMode=v; render(); }
+function setSortAndRender(v){ sortMode=v; pinnedId=null; render(); }
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 function editIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;}
@@ -1280,7 +1376,7 @@ function toggleAI(){
 function aiSuggest(text){ document.getElementById('ai-input').value=text; sendAI(); }
 
 async function sendAI(){
-  if(!aiKey){ toast('Please add your OpenRouter API key first.'); return; }
+  if(!aiKey){ toast('Please add your Groq API key first.'); return; }
   const input = document.getElementById('ai-input');
   const text = input.value.trim(); if(!text) return;
   input.value='';
