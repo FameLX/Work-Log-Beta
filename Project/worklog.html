@@ -168,6 +168,22 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .cl-items{font-size:12px;color:var(--text2);line-height:1.9;padding-left:0;list-style:none;}
 .cl-items li::before{content:'·  ';color:var(--text3);}
 
+/* Due/Overdue alert modal */
+.due-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:120;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.due-modal-overlay.open{opacity:1;pointer-events:auto;}
+.due-modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:520px;max-width:calc(100vw - 32px);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.18);}
+.due-modal-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;}
+.due-modal-header h2{font-size:16px;font-weight:500;flex:1;}
+.due-modal-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.due-item{border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
+.due-item.overdue{border-color:rgba(153,27,27,.3);background:var(--danger-bg);}
+.due-item.today{border-color:rgba(146,64,14,.3);background:var(--warn-bg);}
+.due-item-name{font-size:14px;font-weight:500;margin-bottom:4px;}
+.due-item-meta{font-size:12px;color:var(--text2);margin-bottom:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.due-item-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.due-item-actions input[type=date]{font-size:12px;padding:5px 8px;width:auto;}
+.due-modal-footer{display:flex;justify-content:flex-end;flex-shrink:0;}
+
 /* Deadline range */
 .deadline-range-sep{font-size:12px;color:var(--text3);display:flex;align-items:center;padding:0 2px;flex-shrink:0;}
 
@@ -275,7 +291,7 @@ svg.icon.sm{width:13px;height:13px;}
       <select class="sort-select" id="sort-select" onchange="setSortAndRender(this.value)">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
-        <option value="deadline">By deadline</option>
+        <option value="deadline" selected>By deadline</option>
         <option value="name">By name A–Z</option>
       </select>
       <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle sort direction">
@@ -359,6 +375,23 @@ svg.icon.sm{width:13px;height:13px;}
     <div class="modal-actions" id="gcal-modal-actions">
       <button class="btn" onclick="closeGCalModal()">Cancel</button>
       <button class="btn btn-primary" onclick="gcalAuthorise()">Authorise with Google</button>
+    </div>
+  </div>
+</div>
+
+<!-- Due / Overdue Alert Modal -->
+<div class="due-modal-overlay" id="due-modal">
+  <div class="due-modal">
+    <div class="due-modal-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--danger);flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <h2>Tasks Needing Attention</h2>
+      <button class="icon-btn" onclick="closeDueModal()" title="Dismiss" style="margin-left:auto;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="due-modal-list" id="due-modal-list"></div>
+    <div class="due-modal-footer">
+      <button class="btn" onclick="closeDueModal()">Dismiss all</button>
     </div>
   </div>
 </div>
@@ -475,8 +508,9 @@ let archived = JSON.parse(localStorage.getItem('wl2_archived') || '[]');
 let viewMode = 'active'; // 'active' or 'archive'
 let gcalToken = localStorage.getItem('wl2_gcal_token') || null;
 let filterType = 'All';
-let sortMode = 'newest';
-let sortDir = 'desc'; // 'desc' or 'asc'
+let sortMode = 'deadline';
+let sortDir = 'asc'; // deadline default: soonest first
+let pinnedId = null; // newly added entry shown at top until sort changes
 let editingId = null;
 let syncMode = 'event'; // 'event' or 'task'
 
@@ -528,6 +562,9 @@ window.addEventListener('message', function(ev){
 (function init(){
   document.getElementById('f-deadline').value = today();
   document.getElementById('f-deadline-task').value = today();
+  // Sync sort direction button icon to default asc
+  const sdBtn = document.getElementById('sort-dir-btn');
+  if(sdBtn){ sdBtn.title='Currently ascending — click for descending'; sdBtn.innerHTML=`<svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`; }
   if(gcalToken){
     document.getElementById('gcal-pill').classList.add('connected');
     document.getElementById('gcal-pill-text').textContent = 'Calendar connected';
@@ -535,6 +572,7 @@ window.addEventListener('message', function(ev){
   applyUIColors();
   populateTypeSelects();
   render();
+  checkDueOverdue();
 })();
 
 function setSyncMode(mode){
@@ -561,6 +599,7 @@ function addEntry(){
   const gcalColorId = typeGCalIds[type] || undefined;
   const entry = {id: Date.now(), name, type, deadline, deadlineEnd, time, remark, color, gcalColorId, syncMode: isTask?'task':'event', created: new Date().toISOString()};
   entries.unshift(entry);
+  pinnedId = entry.id;
   save(); render(); clearForm();
   toast('Entry added.');
   if(gcalToken && deadline){
@@ -637,6 +676,57 @@ function deleteArchived(id){
   archived = archived.filter(x=>x.id!==id);
   save(); render(); toast('Entry permanently deleted.');
 }
+// ── Due / Overdue Alert Modal ──────────────────────────────────────────────
+function checkDueOverdue(){
+  const t = today();
+  const flagged = entries.filter(e => e.deadline && e.deadline <= t);
+  if(!flagged.length) return;
+
+  const list = document.getElementById('due-modal-list');
+  list.innerHTML = flagged.map(e => {
+    const isOverdue = e.deadline < t;
+    const label = isOverdue ? `Overdue · ${fmtDate(e.deadline)}` : 'Due today';
+    const typeChip = e.type ? `<span class="chip type">${esc(e.type)}</span>` : '';
+    return `
+    <div class="due-item ${isOverdue?'overdue':'today'}" id="due-item-${e.id}">
+      <div class="due-item-name">${esc(e.name)}</div>
+      <div class="due-item-meta">${typeChip}<span>${label}</span></div>
+      <div class="due-item-actions">
+        <button class="btn btn-sm btn-danger" onclick="dueArchive(${e.id})">Archive</button>
+        <input type="date" id="due-extend-${e.id}" value="${t}" min="${t}" style="width:140px;"/>
+        <button class="btn btn-sm" onclick="dueExtend(${e.id})">Extend to date</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('due-modal').classList.add('open');
+}
+
+function closeDueModal(){
+  document.getElementById('due-modal').classList.remove('open');
+}
+
+function dueArchive(id){
+  archiveEntry(id);
+  const el = document.getElementById('due-item-'+id);
+  if(el) el.remove();
+  if(!document.getElementById('due-modal-list').children.length) closeDueModal();
+}
+
+function dueExtend(id){
+  const newDate = document.getElementById('due-extend-'+id)?.value;
+  if(!newDate){ toast('Pick a date first.'); return; }
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  e.deadline = newDate;
+  if(e.syncMode==='task' && e.gcalTaskId && gcalToken) patchGTask(e);
+  else if(e.syncMode!=='task' && e.gcalEventId && gcalToken) patchGCal(e);
+  save(); render();
+  toast('Deadline extended to '+fmtDate(newDate)+'.');
+  const el = document.getElementById('due-item-'+id);
+  if(el) el.remove();
+  if(!document.getElementById('due-modal-list').children.length) closeDueModal();
+}
+
 function v(id){ return document.getElementById(id)?.value.trim() || ''; }
 
 function clearForm(){
@@ -656,11 +746,16 @@ function sorted(source){
   else if(sortMode==='name') result = copy.sort((a,b)=>a.name.localeCompare(b.name));
   else result = copy; // newest (already newest-first from unshift)
   if(sortDir==='asc') result = result.reverse();
+  // Pin newly added entry at top until user changes sort or refreshes
+  if(pinnedId !== null){
+    const idx = result.findIndex(e=>e.id===pinnedId);
+    if(idx > 0){ result.unshift(result.splice(idx,1)[0]); }
+  }
   return result;
 }
 
 function toggleSortDir(){
-  sortDir = sortDir==='desc' ? 'asc' : 'desc';
+  sortDir = sortDir==='desc' ? 'asc' : 'desc'; pinnedId=null;
   const btn = document.getElementById('sort-dir-btn');
   if(btn){
     btn.title = sortDir==='asc' ? 'Currently ascending — click for descending' : 'Currently descending — click for ascending';
@@ -815,7 +910,7 @@ function fmtTime(t){
 }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function setFilter(t){ filterType=t; render(); }
-function setSortAndRender(v){ sortMode=v; render(); }
+function setSortAndRender(v){ sortMode=v; pinnedId=null; render(); }
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 function editIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;}
