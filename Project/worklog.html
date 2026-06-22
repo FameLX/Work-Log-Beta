@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Work Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#F7F6F3;--surface:#FFFFFF;--surface2:#F0EFE9;
+  --border:#E2E0D8;--border2:#C8C6BC;
+  --text:#1A1917;--text2:#6B6860;--text3:#9C9A92;
+  --accent:#1A1917;--accent-text:#FFFFFF;
+  --success:#2D6A4F;--success-bg:#D8F3DC;
+  --warn:#92400E;--warn-bg:#FEF3C7;
+  --danger:#991B1B;--danger-bg:#FEE2E2;
+  --info:#1E40AF;--info-bg:#DBEAFE;
+  --radius:10px;--radius-lg:14px;
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'DM Mono',monospace;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;}
+a{color:inherit;}
+
+/* Layout */
+.app{display:grid;grid-template-columns:320px 1fr;grid-template-rows:auto 1fr;min-height:100vh;}
+.topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;}
+.topbar-logo{font-size:15px;font-weight:500;letter-spacing:-.3px;}
+.topbar-logo span{opacity:.4;}
+.topbar-spacer{flex:1;}
+.gcal-pill{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:border-color .15s;}
+.gcal-pill:hover{border-color:var(--border2);}
+.gcal-pill.connected{background:var(--success-bg);color:var(--success);border-color:rgba(45,106,79,.25);}
+.gcal-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7;}
+
+/* Sidebar */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 20px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;}
+.section-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+label.field-label{display:block;font-size:13px;color:var(--text2);margin-bottom:5px;font-weight:400;}
+input[type=text],input[type=date],input[type=time],textarea,select{
+  display:block;width:100%;min-width:0;font-family:var(--font);font-size:14px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);
+  padding:8px 11px;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;
+  appearance:none;-webkit-appearance:none;
+}
+input[type=text]:focus,input[type=date]:focus,input[type=time]:focus,textarea:focus,select:focus{
+  border-color:var(--border2);box-shadow:0 0 0 3px rgba(26,25,23,.06);
+}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6860' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+textarea{resize:vertical;min-height:90px;line-height:1.5;}
+.form-group{margin-bottom:14px;}
+.form-group:last-child{margin-bottom:0;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-family:var(--font);font-size:14px;font-weight:400;padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;transition:all .15s;}
+.btn:hover{background:var(--surface2);}
+.btn-primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent);}
+.btn-primary:hover{opacity:.88;background:var(--accent);}
+.btn-sm{font-size:12px;padding:5px 10px;}
+.btn-danger{color:var(--danger);border-color:rgba(153,27,27,.2);}
+.btn-danger:hover{background:var(--danger-bg);}
+.sidebar-actions{display:flex;flex-direction:column;gap:8px;}
+
+/* Main */
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.main-header{padding:20px 24px 0;display:flex;align-items:center;gap:12px;}
+.main-header h1{font-size:18px;font-weight:500;letter-spacing:-.3px;}
+.entry-count{font-size:12px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:99px;}
+.main-header-spacer{flex:1;}
+.filter-bar{padding:12px 24px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
+.filter-chip{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s;}
+.filter-chip:hover{border-color:var(--border2);}
+.filter-chip.active{background:var(--text);color:#fff;border-color:var(--text);}
+.entries{padding:16px 24px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:10px;}
+.empty-state{text-align:center;padding:60px 24px;color:var(--text3);}
+.empty-icon{font-size:36px;margin-bottom:12px;opacity:.3;}
+.empty-state p{font-size:14px;}
+
+/* Entry card */
+.entry-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow);transition:border-color .15s;}
+.entry-card:hover{border-color:var(--border2);}
+.entry-card.editing{border-color:var(--border2);box-shadow:0 0 0 3px rgba(26,25,23,.06);}
+.entry-top{display:flex;align-items:flex-start;gap:10px;}
+.entry-body{flex:1;min-width:0;}
+.entry-name{font-size:15px;font-weight:500;color:var(--text);margin-bottom:4px;line-height:1.4;}
+.entry-remark{font-size:13px;color:var(--text2);margin-bottom:8px;white-space:pre-wrap;word-break:break-word;}
+.entry-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);}
+.chip.type{background:var(--info-bg);color:var(--info);border-color:rgba(30,64,175,.2);}
+.chip.overdue{background:var(--danger-bg);color:var(--danger);border-color:rgba(153,27,27,.25);}
+.chip.soon{background:var(--warn-bg);color:var(--warn);border-color:rgba(146,64,14,.25);}
+.entry-actions{display:flex;gap:4px;flex-shrink:0;}
+.icon-btn{width:30px;height:30px;border-radius:8px;border:none;background:transparent;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.icon-btn:hover{background:var(--surface2);color:var(--text);}
+.icon-btn.del:hover{background:var(--danger-bg);color:var(--danger);}
+.icon-btn.cal:hover{background:var(--info-bg);color:var(--info);}
+/* Edit mode fields */
+.edit-fields{display:flex;flex-direction:column;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.edit-row2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.edit-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:6px;}
+
+/* AI Chat Panel */
+.ai-panel{position:fixed;right:0;top:56px;width:360px;height:calc(100vh - 56px);background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:50;box-shadow:-4px 0 20px rgba(0,0,0,.06);}
+.ai-panel.open{transform:translateX(0);}
+.ai-panel-header{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.ai-panel-header h2{font-size:14px;font-weight:500;flex:1;}
+.ai-badge{font-size:10px;font-weight:500;letter-spacing:.04em;padding:2px 7px;border-radius:99px;background:var(--surface2);border:1px solid var(--border);color:var(--text3);}
+.ai-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.ai-msg{max-width:90%;font-size:13px;line-height:1.6;}
+.ai-msg.user{align-self:flex-end;background:var(--text);color:#fff;padding:8px 12px;border-radius:12px 12px 3px 12px;}
+.ai-msg.bot{align-self:flex-start;background:var(--surface2);color:var(--text);padding:8px 12px;border-radius:3px 12px 12px 12px;border:1px solid var(--border);}
+.ai-msg.bot.loading{color:var(--text3);}
+.ai-input-row{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;}
+.ai-input-row input{flex:1;font-size:13px;}
+.ai-suggestions{padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:5px;}
+.ai-suggest{font-size:11px;padding:4px 9px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;transition:all .12s;}
+.ai-suggest:hover{background:var(--surface2);border-color:var(--border2);}
+
+/* GCal modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.modal-overlay.open{opacity:1;pointer-events:auto;}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:440px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,.15);}
+.modal h2{font-size:16px;font-weight:500;margin-bottom:6px;}
+.modal p{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;}
+.modal-steps{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.8;counter-reset:step;}
+.modal-steps li{counter-increment:step;list-style:none;padding-left:22px;position:relative;}
+.modal-steps li::before{content:counter(step);position:absolute;left:0;width:16px;height:16px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);font-size:10px;display:flex;align-items:center;justify-content:center;top:4px;font-family:var(--mono);}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+.mono{font-family:var(--mono);font-size:12px;background:var(--surface2);padding:2px 6px;border-radius:4px;border:1px solid var(--border);}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:9px 18px;border-radius:var(--radius);font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.15);opacity:0;transition:all .25s;pointer-events:none;z-index:200;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* Sort bar */
+.sort-select{font-size:12px;padding:4px 24px 4px 8px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;}
+.sort-dir-btn{width:28px;height:28px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.sort-dir-btn:hover{border-color:var(--border2);color:var(--text);}
+
+/* Settings overlay */
+.settings-overlay{position:fixed;inset:0;background:var(--bg);z-index:150;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.settings-overlay.open{transform:translateX(0);}
+.settings-topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;padding:0 24px;flex-shrink:0;}
+.settings-topbar h2{font-size:15px;font-weight:500;flex:1;}
+.settings-body{flex:1;overflow-y:auto;padding:32px 24px;max-width:720px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:32px;}
+.settings-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px;}
+.settings-section h3{font-size:13px;font-weight:500;margin-bottom:4px;}
+.settings-section .desc{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6;}
+.type-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);}
+.type-row:last-child{border-bottom:none;}
+.type-color-swatch{width:22px;height:22px;border-radius:5px;border:1px solid var(--border);flex-shrink:0;cursor:pointer;}
+.type-label{flex:1;font-size:13px;}
+.type-gcal-select{font-size:12px;padding:3px 22px 3px 7px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);}
+.color-input-wrap{display:flex;align-items:center;gap:6px;}
+.color-input-wrap input[type=color]{width:30px;height:30px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--surface2);}
+.color-input-wrap input[type=text]{width:90px;font-size:12px;font-family:var(--mono);padding:5px 8px;}
+.add-type-row{display:flex;gap:8px;margin-top:14px;}
+.add-type-row input{flex:1;}
+
+/* Changelog modal */
+.changelog-body{max-height:60vh;overflow-y:auto;margin:16px 0;}
+.cl-version{margin-bottom:18px;}
+.cl-version-header{font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.cl-version-tag{font-size:10px;font-weight:500;padding:2px 7px;border-radius:99px;background:var(--success-bg);color:var(--success);border:1px solid rgba(45,106,79,.2);}
+.cl-version-tag.old{background:var(--surface2);color:var(--text3);border-color:var(--border);}
+.cl-items{font-size:12px;color:var(--text2);line-height:1.9;padding-left:0;list-style:none;}
+.cl-items li::before{content:'·  ';color:var(--text3);}
+
+/* Deadline range */
+.deadline-range-sep{font-size:12px;color:var(--text3);display:flex;align-items:center;padding:0 2px;flex-shrink:0;}
+
+/* Event/Task mode toggle */
+.sync-mode-toggle{display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:14px;}
+.sync-mode-btn{flex:1;font-family:var(--font);font-size:13px;padding:6px 0;border:none;background:transparent;color:var(--text2);cursor:pointer;transition:all .15s;}
+.sync-mode-btn.active{background:var(--accent);color:var(--accent-text);}
+.sync-mode-btn:not(.active):hover{background:var(--surface2);}
+.chip.task-mode{background:#EDE9FE;color:#5B21B6;border-color:rgba(91,33,182,.25);}
+
+svg.icon{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+svg.icon.sm{width:13px;height:13px;}
+
+@media(max-width:700px){
+  .app{grid-template-columns:1fr;}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);}
+  .ai-panel{width:100%;top:56px;}
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v2.1</span></div>
+    <div class="topbar-spacer"></div>
+    <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
+      <div class="gcal-dot"></div>
+      <span id="gcal-pill-text">Connect Google Calendar</span>
+    </button>
+    <button class="btn btn-sm" onclick="openSettings()" style="gap:5px;margin-left:8px;" title="Settings">
+      <svg class="icon sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+    <button class="btn btn-sm" onclick="toggleAI()" id="ai-toggle-btn" style="gap:5px;margin-left:4px;">
+      <svg class="icon sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Ask AI
+    </button>
+  </header>
+
+  <!-- SIDEBAR: Add Entry Form -->
+  <aside class="sidebar">
+    <div>
+      <div class="section-label">New entry</div>
+      <div class="sync-mode-toggle">
+        <button class="sync-mode-btn active" id="mode-event-btn" onclick="setSyncMode('event')">Event</button>
+        <button class="sync-mode-btn" id="mode-task-btn" onclick="setSyncMode('task')">Task</button>
+      </div>
+      <div class="form-group">
+        <label class="field-label" for="f-name">Work name</label>
+        <input type="text" id="f-name" placeholder="e.g. Prepare Q3 report…"/>
+      </div>
+      <div class="form-group">
+        <label class="field-label" for="f-type">Type</label>
+        <select id="f-type"></select>
+      </div>
+      <div class="form-group">
+        <label class="field-label" id="f-deadline-label">Deadline</label>
+        <div id="f-deadline-range" style="display:grid;grid-template-columns:1fr auto 1fr;gap:4px;align-items:center;margin-bottom:6px;max-width:100%;overflow:hidden;">
+          <input type="date" id="f-deadline" style="min-width:0;width:100%;"/>
+          <span class="deadline-range-sep">→</span>
+          <input type="date" id="f-deadline-end" style="min-width:0;width:100%;" title="End date (optional — leave blank for single day)"/>
+        </div>
+        <div id="f-deadline-single" style="display:none;margin-bottom:6px;">
+          <input type="date" id="f-deadline-task" style="min-width:0;width:100%;"/>
+        </div>
+        <input type="time" id="f-time" placeholder="Time (optional)" style="font-size:13px;"/>
+      </div>
+      <div class="form-group">
+        <label class="field-label" for="f-remark">Remark</label>
+        <textarea id="f-remark" placeholder="Notes, context, follow-ups…"></textarea>
+      </div>
+      <div class="sidebar-actions">
+        <button class="btn btn-primary" onclick="addEntry()">
+          <svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add entry
+        </button>
+        <button class="btn" onclick="clearForm()">Clear form</button>
+      </div>
+    </div>
+
+    <div style="padding-top:8px;border-top:1px solid var(--border);">
+      <div class="section-label">Export</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-sm" onclick="exportCSV()">Export CSV</button>
+        <button class="btn btn-sm" onclick="exportXLSX()">Export Excel</button>
+        <button class="btn btn-sm" onclick="exportJSON()">Export JSON</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN: Entries -->
+  <main class="main">
+    <div class="main-header">
+      <h1 id="main-title">Entries</h1>
+      <span class="entry-count" id="entry-count">0</span>
+      <div class="main-header-spacer"></div>
+      <button class="btn btn-sm" id="view-toggle-btn" onclick="toggleView()" style="gap:5px;background:var(--surface);">
+        <svg class="icon sm" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg>
+        <span id="view-toggle-label">View Archive</span><span id="archive-count" style="font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 7px;margin-left:2px;"></span>
+      </button>
+      <select class="sort-select" id="sort-select" onchange="setSortAndRender(this.value)">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="deadline">By deadline</option>
+        <option value="name">By name A–Z</option>
+      </select>
+      <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle sort direction">
+        <svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+      </button>
+    </div>
+    <div class="filter-bar" id="filter-bar"></div>
+    <div class="entries" id="entries-list"></div>
+  </main>
+</div>
+
+<!-- AI Panel -->
+<div class="ai-panel" id="ai-panel">
+  <div class="ai-panel-header">
+    <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a8 8 0 0 0-8 8c0 3 1.6 5.6 4 7.1V20h8v-2.9c2.4-1.5 4-4.1 4-7.1a8 8 0 0 0-8-8z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
+    <h2>AI Assistant</h2>
+    <span class="ai-badge" id="ai-model-badge">Not connected</span>
+    <button class="icon-btn" onclick="toggleAI()" style="margin-left:auto;">
+      <svg class="icon sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <!-- API key setup -->
+  <div id="ai-setup" style="padding:16px;border-bottom:1px solid var(--border);background:var(--surface2);">
+    <div style="font-size:13px;font-weight:500;margin-bottom:6px;">Connect AI (free)</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6;">
+      Get a free API key from <a href="https://console.groq.com/keys" target="_blank" style="color:var(--info)">console.groq.com/keys</a> — free, no credit card needed. Sign in with Google, click <strong>Create API Key</strong>, copy and paste below.
+    </div>
+    <div style="display:flex;gap:6px;">
+      <input type="password" id="ai-key-input" placeholder="gsk_…" style="flex:1;font-size:12px;padding:6px 9px;"/>
+      <button class="btn btn-primary btn-sm" onclick="saveAIKey()">Save</button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:6px;">Key is saved locally in your browser only.</div>
+  </div>
+  <!-- Model selector (shown when connected) -->
+  <div id="ai-model-row" style="display:none;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--surface2);align-items:center;gap:8px;">
+    <span style="font-size:12px;color:var(--text2);flex-shrink:0;">Model:</span>
+    <select id="ai-model-select" style="flex:1;font-size:12px;padding:4px 8px;" onchange="saveModel()">
+      <option value="llama-3.3-70b-versatile">Llama 3.3 70B (recommended)</option>
+      <option value="llama-3.1-8b-instant">Llama 3.1 8B (fastest)</option>
+    </select>
+    <button class="btn btn-sm" onclick="testModel()" style="font-size:11px;padding:4px 8px;flex-shrink:0;">Test</button>
+    <button class="btn btn-sm btn-danger" onclick="disconnectAI()" style="font-size:11px;padding:4px 8px;flex-shrink:0;">Disconnect</button>
+  </div>
+  <div id="ai-custom-model-row" style="display:none;padding:0 16px 10px;background:var(--surface2);border-bottom:1px solid var(--border);">
+    <input type="text" id="ai-custom-model-input" placeholder="e.g. mistralai/mistral-7b-instruct:free" style="font-size:12px;padding:6px 9px;" oninput="saveCustomModel()"/>
+    <div style="font-size:11px;color:var(--text3);margin-top:4px;">Find model names at <a href="https://console.groq.com/docs/models" target="_blank" style="color:var(--info)">console.groq.com/docs/models</a></div>
+  </div>
+  <div class="ai-messages" id="ai-messages">
+    <div class="ai-msg bot">Paste your free Groq key above to get started. Once connected, I can summarise tasks, find overdue items, add or edit entries, and more.</div>
+  </div>
+  <div class="ai-suggestions">
+    <button class="ai-suggest" onclick="aiSuggest('Summarise my current tasks')">Summarise tasks</button>
+    <button class="ai-suggest" onclick="aiSuggest('Which tasks are overdue?')">Overdue tasks</button>
+    <button class="ai-suggest" onclick="aiSuggest('What is due this week?')">Due this week</button>
+    <button class="ai-suggest" onclick="aiSuggest('Add a task: Team standup, Type: Meeting, Deadline: today')">Add a task</button>
+  </div>
+  <div class="ai-input-row">
+    <input type="text" id="ai-input" placeholder="Ask anything about your work log…" onkeydown="if(event.key==='Enter')sendAI()"/>
+    <button class="btn btn-primary btn-sm" onclick="sendAI()">Send</button>
+  </div>
+</div>
+
+<!-- Google Calendar Modal -->
+<div class="modal-overlay" id="gcal-modal">
+  <div class="modal">
+    <h2>Connect Google Calendar</h2>
+    <p style="color:var(--success);background:var(--success-bg);padding:8px 12px;border-radius:8px;font-size:13px;margin-bottom:12px;">✓ The Google Calendar API is completely free — no subscription needed. You only need a free Google account.</p>
+    <p>One-time setup (about 5 minutes). After this, connecting is just: <strong>1. Paste Client ID → 2. Click Authorise → 3. Approve in popup</strong> (that's it!):</p>
+    <ol class="modal-steps">
+      <li>Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--info)">console.cloud.google.com</a> and sign in with any Google account. Click <strong>Select a project → New Project</strong>, give it any name, click Create.</li>
+      <li>In the search bar type <strong>Google Calendar API</strong>, click it, then click <strong>Enable</strong>. Then do the same for <strong>Google Tasks API</strong>.</li>
+      <li>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>. Choose <em>Web application</em>. Under "Authorised JavaScript origins" add <span class="mono">https://famelx.github.io</span> and under "Authorised redirect URIs" add <span class="mono">https://famelx.github.io/Work-Log/</span>. Click Create.</li>
+      <li>Copy the <strong>Client ID</strong> (the long string ending in <span class="mono">.apps.googleusercontent.com</span>) and paste it below, then click <strong>Authorise with Google</strong>.</li>
+    </ol>
+    <div class="form-group"><label class="field-label">OAuth Client ID</label><input type="text" id="gcal-client-id" placeholder="xxxx.apps.googleusercontent.com"/></div>
+    <div id="gcal-token-section" style="display:none;">
+      <p style="font-size:13px;color:var(--success);background:var(--success-bg);padding:8px 12px;border-radius:8px;margin:12px 0 8px;line-height:1.6;"><strong>✓ Popup opened.</strong> A Google sign-in window appeared. <strong>Just approve access</strong> — this page will automatically detect it and connect. No copy-paste needed!</p>
+      <p style="font-size:12px;color:var(--text3);margin:12px 0 8px;line-height:1.5;"><em>If the popup was blocked or something goes wrong, you can manually paste the token as a fallback:</em></p>
+      <div class="form-group"><label class="field-label">Access token (fallback only)</label><input type="text" id="gcal-token-input" placeholder="ya29.a0…"/></div>
+    </div>
+    <div class="modal-actions" id="gcal-modal-actions">
+      <button class="btn" onclick="closeGCalModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="gcalAuthorise()">Authorise with Google</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Overlay -->
+<div class="settings-overlay" id="settings-overlay">
+  <div class="settings-topbar">
+    <button class="icon-btn" onclick="closeSettings()" title="Back">
+      <svg class="icon" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    </button>
+    <h2>Settings</h2>
+    <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save changes</button>
+  </div>
+  <div class="settings-body">
+
+    <!-- Task Types -->
+    <div class="settings-section">
+      <h3>Task Types</h3>
+      <div class="desc">Add or remove types available in the entry form. Built-in types cannot be removed.</div>
+      <div id="settings-types-list"></div>
+      <div class="add-type-row">
+        <input type="text" id="new-type-input" placeholder="New type name…" onkeydown="if(event.key==='Enter')addCustomType()"/>
+        <button class="btn btn-sm btn-primary" onclick="addCustomType()">Add</button>
+      </div>
+    </div>
+
+    <!-- Type Colours -->
+    <div class="settings-section">
+      <h3>Type Colours</h3>
+      <div class="desc">Set a colour for each type. This colour appears on entry cards and is used when syncing to Google Calendar.<br>
+      Google Calendar colour IDs: 1 Lavender · 2 Sage · 3 Grape · 4 Flamingo · 5 Banana · 6 Tangerine · 7 Peacock · 8 Graphite · 9 Blueberry · 10 Basil · 11 Tomato</div>
+      <div id="settings-colors-list"></div>
+    </div>
+
+    <!-- UI Colours -->
+    <div class="settings-section">
+      <h3>Interface Colour</h3>
+      <div class="desc">Customise the accent colour used for primary buttons and highlights.</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text2);width:120px;">Accent colour</span>
+          <div class="color-input-wrap">
+            <input type="color" id="ui-accent-color" value="#1A1917"/>
+            <input type="text" id="ui-accent-hex" placeholder="#1A1917" oninput="syncColorFromHex('ui-accent-color','ui-accent-hex')"/>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text2);width:120px;">Background</span>
+          <div class="color-input-wrap">
+            <input type="color" id="ui-bg-color" value="#F7F6F3"/>
+            <input type="text" id="ui-bg-hex" placeholder="#F7F6F3" oninput="syncColorFromHex('ui-bg-color','ui-bg-hex')"/>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text2);width:120px;">Surface</span>
+          <div class="color-input-wrap">
+            <input type="color" id="ui-surface-color" value="#FFFFFF"/>
+            <input type="text" id="ui-surface-hex" placeholder="#FFFFFF" oninput="syncColorFromHex('ui-surface-color','ui-surface-hex')"/>
+          </div>
+        </div>
+        <button class="btn btn-sm" onclick="resetUIColors()" style="align-self:flex-start;">Reset to defaults</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Changelog Modal -->
+<div class="modal-overlay" id="changelog-modal">
+  <div class="modal" style="max-width:500px;width:calc(100vw - 32px);">
+    <h2>Changelog</h2>
+    <div class="changelog-body">
+      <div class="cl-version">
+        <div class="cl-version-header">v2.1 — June 2025 <span class="cl-version-tag">Latest</span></div>
+        <ul class="cl-items">
+          <li>Settings page: customise task types, per-type colours with GCal colour ID mapping, and UI accent/background colours</li>
+          <li>Deadline date ranges: set a start and end date for multi-day tasks; GCal events span the full range</li>
+          <li>Sort direction toggle: flip any sort mode between ascending and descending with one click</li>
+          <li>Changelog now embedded in-app (this modal)</li>
+        </ul>
+      </div>
+      <div class="cl-version">
+        <div class="cl-version-header">v2.0 <span class="cl-version-tag old">Previous</span></div>
+        <ul class="cl-items">
+          <li>Google Calendar sync — push, patch on edit, delete on permanent delete, duplicate check</li>
+          <li>AI assistant via Groq (Llama 3.3 70B / 3.1 8B) with model switcher and test button</li>
+          <li>Archive system: entries move to archive instead of permanent delete, restorable</li>
+          <li>Export to CSV (UTF-8 BOM for Thai), Excel (.xlsx via SheetJS), and JSON</li>
+          <li>Filter by type chips, sort by newest/oldest/deadline/name</li>
+          <li>View Archive toggle with entry count badge</li>
+        </ul>
+      </div>
+      <div class="cl-version">
+        <div class="cl-version-header">v1.0 <span class="cl-version-tag old">Initial</span></div>
+        <ul class="cl-items">
+          <li>Add, edit, delete entries with name, type, deadline, time, remark fields</li>
+          <li>localStorage persistence — private per browser</li>
+          <li>Responsive two-column layout (sidebar + main)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeChangelog()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let entries = JSON.parse(localStorage.getItem('wl2_entries') || '[]');
+let archived = JSON.parse(localStorage.getItem('wl2_archived') || '[]');
+let viewMode = 'active'; // 'active' or 'archive'
+let gcalToken = localStorage.getItem('wl2_gcal_token') || null;
+let filterType = 'All';
+let sortMode = 'newest';
+let sortDir = 'desc'; // 'desc' or 'asc'
+let editingId = null;
+let syncMode = 'event'; // 'event' or 'task'
+
+// ── Settings state ─────────────────────────────────────────────────────────
+const BUILTIN_TYPES = ['Meeting','Review','Report','Research','Other'];
+
+function fmtTime12(t){
+  if(!t) return '';
+  const [h,m] = t.split(':');
+  const hr = parseInt(h);
+  return (hr%12||12)+':'+m+' '+(hr<12?'AM':'PM');
+}
+
+function buildGTaskTitle(entry){
+  return entry.time ? `${fmtTime12(entry.time)} | ${entry.name}` : entry.name;
+}
+let customTypes = JSON.parse(localStorage.getItem('wl2_custom_types') || '[]');
+let typeColors = JSON.parse(localStorage.getItem('wl2_type_colors') || '{}');
+let typeGCalIds = JSON.parse(localStorage.getItem('wl2_type_gcal_ids') || '{}');
+let uiColors = JSON.parse(localStorage.getItem('wl2_ui_colors') || '{}');
+
+function allTypes(){ return [...BUILTIN_TYPES, ...customTypes]; }
+
+// ── OAuth token auto-capture ───────────────────────────────────────────────
+// If this page load is the OAuth popup (URL has #access_token=...), grab the
+// token, hand it back to the window that opened us, then close.
+(function captureOAuthRedirect(){
+  if(location.hash && location.hash.indexOf('access_token=')!==-1){
+    const params = new URLSearchParams(location.hash.slice(1));
+    const token = params.get('access_token');
+    if(token && window.opener){
+      try{ window.opener.postMessage({type:'wl2_gcal_token', token}, location.origin); }catch(e){}
+      // Clean the token out of the address bar then close the popup.
+      history.replaceState(null,'',location.pathname + location.search);
+      window.close();
+    }
+  }
+})();
+
+// Main-window listener: receive the token the popup sent and connect.
+window.addEventListener('message', function(ev){
+  if(ev.origin !== location.origin) return;
+  if(ev.data && ev.data.type==='wl2_gcal_token' && ev.data.token){
+    gcalApplyToken(ev.data.token);
+  }
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+(function init(){
+  document.getElementById('f-deadline').value = today();
+  document.getElementById('f-deadline-task').value = today();
+  if(gcalToken){
+    document.getElementById('gcal-pill').classList.add('connected');
+    document.getElementById('gcal-pill-text').textContent = 'Calendar connected';
+  }
+  applyUIColors();
+  populateTypeSelects();
+  render();
+})();
+
+function setSyncMode(mode){
+  syncMode = mode;
+  document.getElementById('mode-event-btn').classList.toggle('active', mode==='event');
+  document.getElementById('mode-task-btn').classList.toggle('active', mode==='task');
+  document.getElementById('f-deadline-range').style.display = mode==='event' ? 'grid' : 'none';
+  document.getElementById('f-deadline-single').style.display = mode==='task' ? 'block' : 'none';
+  document.getElementById('f-deadline-label').textContent = mode==='task' ? 'Due date' : 'Deadline';
+}
+
+function today(){ return new Date().toISOString().split('T')[0]; }
+
+// ── CRUD ───────────────────────────────────────────────────────────────────
+function addEntry(){
+  const name = v('f-name'); const type = v('f-type');
+  const remark = v('f-remark');
+  if(!name){ toast('Enter a work name.'); return; }
+  const time = v('f-time');
+  const isTask = syncMode === 'task';
+  const deadline = isTask ? v('f-deadline-task') : v('f-deadline');
+  const deadlineEnd = isTask ? '' : v('f-deadline-end');
+  const color = typeColors[type] || null;
+  const gcalColorId = typeGCalIds[type] || undefined;
+  const entry = {id: Date.now(), name, type, deadline, deadlineEnd, time, remark, color, gcalColorId, syncMode: isTask?'task':'event', created: new Date().toISOString()};
+  entries.unshift(entry);
+  save(); render(); clearForm();
+  toast('Entry added.');
+  if(gcalToken && deadline){
+    if(isTask) pushToGTask(entry);
+    else pushToGCal(entry);
+  }
+}
+
+function deleteEntry(id){
+  if(!confirm('Delete this entry?')) return;
+  const entry = entries.find(e=>e.id===id);
+  if(entry) entry.syncMode==='task' ? deleteFromGTask(entry) : deleteFromGCal(entry);
+  entries = entries.filter(e=>e.id!==id);
+  save(); render(); toast('Entry deleted.');
+}
+
+function startEdit(id){
+  editingId = id; render();
+  setTimeout(()=>{ const el = document.getElementById('edit-name-'+id); if(el) el.focus(); },50);
+}
+
+function cancelEdit(){ editingId = null; render(); }
+
+function saveEdit(id){
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  const name = v('edit-name-'+id);
+  if(!name){ toast('Name cannot be empty.'); return; }
+  e.name = name;
+  e.type = v('edit-type-'+id);
+  e.time = v('edit-time-'+id);
+  e.remark = v('edit-remark-'+id);
+  e.color = typeColors[e.type] || e.color || null;
+  e.gcalColorId = typeGCalIds[e.type] || undefined;
+  if(e.syncMode==='task'){
+    e.deadline = v('edit-deadline-task-'+id);
+    e.deadlineEnd = '';
+  } else {
+    e.deadline = v('edit-deadline-'+id);
+    e.deadlineEnd = v('edit-deadline-end-'+id);
+  }
+  editingId = null;
+  save(); render(); toast('Entry updated.');
+  if(gcalToken && e.deadline){
+    if(e.syncMode==='task' && e.gcalTaskId) patchGTask(e);
+    else if(e.syncMode!=='task' && e.gcalEventId) patchGCal(e);
+  }
+}
+
+function save(){ 
+  localStorage.setItem('wl2_entries', JSON.stringify(entries)); 
+  localStorage.setItem('wl2_archived', JSON.stringify(archived));
+}
+
+function archiveEntry(id){
+  const e = entries.find(x=>x.id===id); if(!e) return;
+  e.archivedAt = new Date().toISOString();
+  archived.unshift(e);
+  entries = entries.filter(x=>x.id!==id);
+  save(); render(); toast('Entry archived. View it in Archive.');
+}
+
+function restoreEntry(id){
+  const e = archived.find(x=>x.id===id); if(!e) return;
+  delete e.archivedAt;
+  entries.unshift(e);
+  archived = archived.filter(x=>x.id!==id);
+  save(); render(); toast('Entry restored to active.');
+}
+
+function deleteArchived(id){
+  if(!confirm('Permanently delete this entry? This cannot be undone.')) return;
+  const entry = archived.find(x=>x.id===id);
+  if(entry) entry.syncMode==='task' ? deleteFromGTask(entry) : deleteFromGCal(entry);
+  archived = archived.filter(x=>x.id!==id);
+  save(); render(); toast('Entry permanently deleted.');
+}
+function v(id){ return document.getElementById(id)?.value.trim() || ''; }
+
+function clearForm(){
+  ['f-name','f-remark','f-time','f-deadline-end'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-type').value='';
+  document.getElementById('f-deadline').value=today();
+  document.getElementById('f-deadline-task').value=today();
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+// ── Sort ───────────────────────────────────────────────────────────────────
+function sorted(source){
+  const copy = [...source];
+  let result;
+  if(sortMode==='oldest') result = [...copy].reverse();
+  else if(sortMode==='deadline') result = copy.sort((a,b)=>{ if(!a.deadline) return 1; if(!b.deadline) return -1; return a.deadline.localeCompare(b.deadline); });
+  else if(sortMode==='name') result = copy.sort((a,b)=>a.name.localeCompare(b.name));
+  else result = copy; // newest (already newest-first from unshift)
+  if(sortDir==='asc') result = result.reverse();
+  return result;
+}
+
+function toggleSortDir(){
+  sortDir = sortDir==='desc' ? 'asc' : 'desc';
+  const btn = document.getElementById('sort-dir-btn');
+  if(btn){
+    btn.title = sortDir==='asc' ? 'Currently ascending — click for descending' : 'Currently descending — click for ascending';
+    btn.innerHTML = sortDir==='asc'
+      ? `<svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`
+      : `<svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`;
+  }
+  render();
+}
+
+function populateTypeSelects(){
+  const types = allTypes();
+  const makeOpts = (selected='') => `<option value="">— Select type —</option>`+types.map(t=>`<option${selected===t?' selected':''}>${esc(t)}</option>`).join('');
+  const fs = document.getElementById('f-type');
+  if(fs){ const cur=fs.value; fs.innerHTML=makeOpts(cur); }
+}
+
+function toggleView(){
+  viewMode = viewMode==='active' ? 'archive' : 'active';
+  filterType = 'All';
+  document.getElementById('view-toggle-label').textContent = viewMode==='active' ? 'View Archive' : 'Back to Active';
+  document.getElementById('main-title').textContent = viewMode==='active' ? 'Entries' : 'Archive';
+  document.querySelector('.sidebar').style.opacity = viewMode==='archive' ? '0.4' : '1';
+  document.querySelector('.sidebar').style.pointerEvents = viewMode==='archive' ? 'none' : '';
+  render();
+}
+
+function render(){
+  const source = viewMode==='active' ? entries : archived;
+  const types = ['All', ...new Set(source.map(e=>e.type).filter(Boolean))];
+  const fb = document.getElementById('filter-bar');
+  fb.innerHTML = types.map(t=>`<button class="filter-chip${filterType===t?' active':''}" onclick="setFilter('${esc(t)}')">${esc(t)}</button>`).join('');
+
+  // Update archive count badge
+  const archiveBadge = document.getElementById('archive-count');
+  if(archiveBadge) archiveBadge.textContent = archived.length > 0 ? archived.length : '';
+
+  const shown = filterType==='All' ? sorted(source) : sorted(source).filter(e=>e.type===filterType);
+  document.getElementById('entry-count').textContent = shown.length;
+  const list = document.getElementById('entries-list');
+  if(!shown.length){
+    const msg = viewMode==='archive' ? 'No archived entries.' : 'No entries yet.<br>Add your first task using the form.';
+    const icon = viewMode==='archive' ? '🗄️' : '📋';
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">${icon}</div><p>${msg}</p></div>`;
+    return;
+  }
+  list.innerHTML = shown.map(e => entryHTML(e, viewMode==='archive')).join('');
+}
+
+function entryHTML(e, isArchived=false){
+  const cardColor = e.color || typeColors[e.type] || null;
+  const status = deadlineStatus(e.deadline, e.deadlineEnd);
+  const isEditing = editingId === e.id;
+  const types = allTypes();
+  const typeOpts = types.map(t=>`<option${e.type===t?' selected':''}>${esc(t)}</option>`).join('');
+  const colorStyle = cardColor ? ` style="border-left:3px solid ${esc(cardColor)};padding-left:13px;"` : '';
+
+  const isTaskEntry = e.syncMode === 'task';
+  if(isEditing) return `
+    <div class="entry-card editing" id="card-${e.id}">
+      <div class="entry-top">
+        <div class="entry-body">
+          <div class="edit-fields">
+            <div><label class="field-label">Work name</label><input type="text" id="edit-name-${e.id}" value="${esc(e.name)}"/></div>
+            <div class="edit-row2">
+              <div><label class="field-label">Type</label>
+                <select id="edit-type-${e.id}"><option value="">— type —</option>${typeOpts}</select>
+              </div>
+              ${isTaskEntry ? `
+              <div style="grid-column:span 2"><label class="field-label">Due date</label><input type="date" id="edit-deadline-task-${e.id}" value="${e.deadline||''}"/></div>
+              ` : `
+              <div><label class="field-label">Start date</label><input type="date" id="edit-deadline-${e.id}" value="${e.deadline||''}"/></div>
+              <div><label class="field-label">End date</label><input type="date" id="edit-deadline-end-${e.id}" value="${e.deadlineEnd||''}" title="Leave blank for single day"/></div>
+              `}
+            </div>
+            <div><label class="field-label">Time${isTaskEntry?' (shown in task title)':''}</label><input type="time" id="edit-time-${e.id}" value="${e.time||''}"/></div>
+            <div><label class="field-label">Remark</label><textarea id="edit-remark-${e.id}" style="min-height:70px;">${esc(e.remark||'')}</textarea></div>
+            <div class="edit-actions">
+              <button class="btn btn-sm" onclick="cancelEdit()">Cancel</button>
+              <button class="btn btn-primary btn-sm" onclick="saveEdit(${e.id})">Save changes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  const typeChip = e.type ? (() => {
+    const dot = cardColor ? `<span style="width:7px;height:7px;border-radius:50%;background:${esc(cardColor)};display:inline-block;margin-right:3px;flex-shrink:0;vertical-align:middle;"></span>` : '';
+    const chipStyle = cardColor ? ` style="background:${esc(cardColor)}22;color:${esc(cardColor)};border-color:${esc(cardColor)}55;"` : '';
+    return `<span class="chip type"${chipStyle}>${dot}${esc(e.type)}</span>`;
+  })() : '';
+
+  const deadlineChip = e.deadline ? (() => {
+    const rangeStr = e.deadlineEnd ? `${fmtDate(e.deadline)} → ${fmtDate(e.deadlineEnd)}` : fmtDate(e.deadline);
+    const timeStr = e.time ? ' · '+fmtTime(e.time) : '';
+    const statusLabel = status===' overdue' ? ' · overdue' : status===' soon' ? ' · soon' : '';
+    return `<span class="chip deadline${status}">${rangeStr}${timeStr}${statusLabel}</span>`;
+  })() : '';
+
+  return `
+    <div class="entry-card" id="card-${e.id}"${colorStyle}>
+      <div class="entry-top">
+        <div class="entry-body">
+          <div class="entry-name">${esc(e.name)}</div>
+          ${e.remark?`<div class="entry-remark">${esc(e.remark)}</div>`:''}
+          <div class="entry-meta">
+            ${isTaskEntry?`<span class="chip task-mode">Task</span>`:''}
+            ${typeChip}
+            ${deadlineChip}
+          </div>
+        </div>
+        <div class="entry-actions">
+          ${isArchived ? `
+            <button class="icon-btn" title="Restore to active" onclick="restoreEntry(${e.id})" style="color:var(--success);">${restoreIcon()}</button>
+            <button class="icon-btn del" title="Delete permanently" onclick="deleteArchived(${e.id})">${trashIcon()}</button>
+          ` : `
+            ${gcalToken&&e.deadline?(isTaskEntry
+              ?`<button class="icon-btn cal" title="Sync to Google Tasks" onclick="pushToGTask(entries.find(x=>x.id===${e.id}))">${taskSyncIcon()}</button>`
+              :`<button class="icon-btn cal" title="Sync to Google Calendar" onclick="pushToGCal(entries.find(x=>x.id===${e.id}))">${calIcon()}</button>`)
+            :''}
+            <button class="icon-btn" title="Edit entry" onclick="startEdit(${e.id})">${editIcon()}</button>
+            <button class="icon-btn" title="Archive entry" onclick="archiveEntry(${e.id})" style="color:var(--text3);">${archiveIcon()}</button>
+            <button class="icon-btn del" title="Delete permanently" onclick="deleteEntry(${e.id})">${trashIcon()}</button>
+          `}
+        </div>
+      </div>
+    </div>`;
+}
+
+function deadlineStatus(d, dEnd){
+  const check = dEnd || d;
+  if(!check) return '';
+  const now = new Date(); now.setHours(0,0,0,0);
+  const dl = new Date(check); dl.setHours(0,0,0,0);
+  const diff = Math.round((dl-now)/(86400000));
+  if(diff<0) return ' overdue';
+  if(diff<=3) return ' soon';
+  return '';
+}
+
+function fmtDate(d){
+  if(!d) return '';
+  const [y,m,day] = d.split('-');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]+' '+parseInt(day)+', '+y;
+}
+
+function fmtTime(t){
+  if(!t) return '';
+  const [h,m] = t.split(':');
+  const hr = parseInt(h);
+  return (hr%12||12)+':'+m+(hr<12?'AM':'PM');
+}
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function setFilter(t){ filterType=t; render(); }
+function setSortAndRender(v){ sortMode=v; render(); }
+
+// ── Icons ──────────────────────────────────────────────────────────────────
+function editIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;}
+function trashIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;}
+function archiveIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`;}
+function restoreIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>`;}
+function calIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;}
+function taskSyncIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function exportCSV(){
+  const rows = [['Name','Type','Deadline','Time','Remark','Created'],...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created])];
+  const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  // \uFEFF = UTF-8 BOM — required for Excel to correctly read Thai and other non-ASCII characters
+  dl('worklog.csv','data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv));
+}
+function exportJSON(){ dl('worklog.json','data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(entries,null,2))); }
+function exportXLSX(){
+  if(typeof XLSX === 'undefined'){ toast('SheetJS not loaded yet, try again.'); return; }
+  const rows = [
+    ['Name','Type','Deadline','Time','Remark','Created'],
+    ...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Column widths
+  ws['!cols'] = [{wch:30},{wch:12},{wch:14},{wch:10},{wch:40},{wch:22}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Work Log');
+  XLSX.writeFile(wb, 'worklog.xlsx');
+}
+function dl(name,href){ const a=document.createElement('a'); a.href=href; a.download=name; a.click(); }
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg,dur=2400){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),dur);
+}
+
+// ── Google Calendar ────────────────────────────────────────────────────────
+function openGCalModal(){ document.getElementById('gcal-modal').classList.add('open'); }
+function closeGCalModal(){ document.getElementById('gcal-modal').classList.remove('open'); }
+
+function gcalAuthorise(){
+  const cid = document.getElementById('gcal-client-id').value.trim();
+  if(!cid){ toast('Paste your Client ID first.'); return; }
+  const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks');
+  const redirect = encodeURIComponent('https://famelx.github.io/Work-Log/');
+  window.open(`https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(cid)}&redirect_uri=${redirect}&response_type=token&scope=${scope}&prompt=consent`,'gcal_oauth','width=520,height=620');
+  // The popup will auto-send the token back via postMessage; show the manual
+  // paste box only as a fallback in case the popup can't reach us.
+  document.getElementById('gcal-token-section').style.display='block';
+  document.getElementById('gcal-modal-actions').innerHTML=`<button class="btn" onclick="closeGCalModal()">Cancel</button><button class="btn btn-primary" onclick="gcalSaveToken()">Connect manually</button>`;
+}
+
+function gcalSaveToken(){
+  const t = document.getElementById('gcal-token-input').value.trim();
+  if(!t){ toast('Paste the access_token first.'); return; }
+  gcalApplyToken(t);
+}
+
+// Shared: store the token and flip the UI to connected. Called both by the
+// automatic postMessage capture and by the manual-paste fallback.
+function gcalApplyToken(t){
+  gcalToken=t; localStorage.setItem('wl2_gcal_token',t);
+  document.getElementById('gcal-pill').classList.add('connected');
+  document.getElementById('gcal-pill-text').textContent='Calendar connected';
+  closeGCalModal(); toast('Google Calendar connected!'); render();
+}
+
+function buildGCalEvent(entry){
+  const desc = [entry.type ? `Type: ${entry.type}` : '', entry.remark || ''].filter(Boolean).join('\n');
+  const colorId = entry.gcalColorId || undefined;
+  let start, end;
+  if(entry.time){
+    start = {dateTime: `${entry.deadline}T${entry.time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone};
+    const endDate = entry.deadlineEnd || entry.deadline;
+    end   = {dateTime: `${endDate}T${entry.time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone};
+  } else if(entry.deadlineEnd){
+    // Multi-day all-day event: GCal end date is exclusive, so add 1 day
+    const endExclusive = new Date(entry.deadlineEnd);
+    endExclusive.setDate(endExclusive.getDate()+1);
+    start = {date: entry.deadline};
+    end   = {date: endExclusive.toISOString().split('T')[0]};
+  } else {
+    start = {date: entry.deadline};
+    end   = {date: entry.deadline};
+  }
+  return {summary:entry.name, description:desc, start, end, ...(colorId&&{colorId})};
+}
+
+async function pushToGCal(entry){
+  if(!gcalToken||!entry?.deadline){ toast('No deadline set.'); return; }
+  try{
+    // ── Duplicate check ──────────────────────────────────────────────────
+    const dayStart = entry.deadline+'T00:00:00Z';
+    const dayEnd   = entry.deadline+'T23:59:59Z';
+    const listRes  = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${dayStart}&timeMax=${dayEnd}&singleEvents=true`,
+      {headers:{Authorization:`Bearer ${gcalToken}`}}
+    );
+    if(listRes.ok){
+      const listData = await listRes.json();
+      const dup = (listData.items||[]).find(ev=>ev.summary===entry.name);
+      if(dup){
+        // Store the existing event ID so future edits can PATCH it
+        entry.gcalEventId = dup.id;
+        save();
+        toast(`Already in Calendar on ${fmtDate(entry.deadline)} — skipped.`);
+        return;
+      }
+    }
+    // ── Create new event ─────────────────────────────────────────────────
+    const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
+      method:'POST', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
+      body:JSON.stringify(buildGCalEvent(entry))
+    });
+    if(res.ok){
+      const created = await res.json();
+      entry.gcalEventId = created.id; // save for future delete/patch
+      save();
+      toast(`"${entry.name}" added to Google Calendar.`);
+    } else {
+      const err = await res.json();
+      toast('Calendar error — ' + (err.error?.message||'token may have expired.'));
+    }
+  }catch(e){ toast('Could not reach Google Calendar.'); }
+}
+
+async function patchGCal(entry){
+  if(!gcalToken||!entry?.gcalEventId) return;
+  try{
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${entry.gcalEventId}`,
+      {method:'PATCH', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
+       body:JSON.stringify(buildGCalEvent(entry))}
+    );
+    if(res.ok) toast(`Calendar event updated for "${entry.name}".`);
+    else toast('Calendar update failed — token may have expired.');
+  }catch{ toast('Could not reach Google Calendar.'); }
+}
+
+async function deleteFromGCal(entry){
+  if(!gcalToken||!entry?.gcalEventId) return;
+  try{
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${entry.gcalEventId}`,
+      {method:'DELETE', headers:{Authorization:`Bearer ${gcalToken}`}}
+    );
+    if(res.ok||res.status===204) toast(`Calendar event removed for "${entry.name}".`);
+    else toast('Calendar delete failed — token may have expired. Remove manually.');
+  }catch{ toast('Could not reach Google Calendar.'); }
+}
+
+// ── Google Tasks ────────────────────────────────────────────────────────────
+async function pushToGTask(entry){
+  if(!gcalToken||!entry?.deadline){ toast('No due date set.'); return; }
+  try{
+    // Duplicate check — fetch all tasks and match by title
+    const listRes = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?showCompleted=false',
+      {headers:{Authorization:`Bearer ${gcalToken}`}});
+    if(listRes.ok){
+      const listData = await listRes.json();
+      const titleToCheck = buildGTaskTitle(entry);
+      const dup = (listData.items||[]).find(t=>t.title===titleToCheck);
+      if(dup){
+        entry.gcalTaskId = dup.id; save();
+        toast(`Already in Google Tasks — skipped.`); return;
+      }
+    }
+    const body = {
+      title: buildGTaskTitle(entry),
+      notes: entry.remark || '',
+      due: entry.deadline+'T00:00:00.000Z',
+      status: 'needsAction'
+    };
+    const res = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks',{
+      method:'POST', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    if(res.ok){
+      const created = await res.json();
+      entry.gcalTaskId = created.id; save();
+      toast(`"${entry.name}" added to Google Tasks.`);
+    } else {
+      const err = await res.json();
+      toast('Tasks error — '+(err.error?.message||'token may have expired.'));
+    }
+  }catch{ toast('Could not reach Google Tasks.'); }
+}
+
+async function patchGTask(entry){
+  if(!gcalToken||!entry?.gcalTaskId) return;
+  try{
+    const body = {
+      title: buildGTaskTitle(entry),
+      notes: entry.remark || '',
+      due: entry.deadline+'T00:00:00.000Z'
+    };
+    const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${entry.gcalTaskId}`,{
+      method:'PATCH', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    if(res.ok) toast(`Task updated for "${entry.name}".`);
+    else toast('Task update failed — token may have expired.');
+  }catch{ toast('Could not reach Google Tasks.'); }
+}
+
+async function deleteFromGTask(entry){
+  if(!gcalToken||!entry?.gcalTaskId) return;
+  try{
+    const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${entry.gcalTaskId}`,{
+      method:'DELETE', headers:{Authorization:`Bearer ${gcalToken}`}
+    });
+    if(res.ok||res.status===204) toast(`Task removed for "${entry.name}".`);
+    else toast('Task delete failed — token may have expired. Remove manually.');
+  }catch{ toast('Could not reach Google Tasks.'); }
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+const GCAL_COLOR_OPTIONS = [
+  {id:'',label:'— None —'},
+  {id:'1',label:'1 · Lavender'},{id:'2',label:'2 · Sage'},{id:'3',label:'3 · Grape'},
+  {id:'4',label:'4 · Flamingo'},{id:'5',label:'5 · Banana'},{id:'6',label:'6 · Tangerine'},
+  {id:'7',label:'7 · Peacock'},{id:'8',label:'8 · Graphite'},{id:'9',label:'9 · Blueberry'},
+  {id:'10',label:'10 · Basil'},{id:'11',label:'11 · Tomato'}
+];
+
+function openSettings(){
+  buildSettingsUI();
+  document.getElementById('settings-overlay').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settings-overlay').classList.remove('open'); }
+
+function buildSettingsUI(){
+  // Types list
+  const typesList = document.getElementById('settings-types-list');
+  typesList.innerHTML = allTypes().map(t => {
+    const isBuiltin = BUILTIN_TYPES.includes(t);
+    const color = typeColors[t] || '#888888';
+    const gcalId = typeGCalIds[t] || '';
+    const gcalOpts = GCAL_COLOR_OPTIONS.map(o=>`<option value="${o.id}"${gcalId===o.id?' selected':''}>${esc(o.label)}</option>`).join('');
+    return `<div class="type-row" id="type-row-${esc(t)}">
+      <div class="color-input-wrap" style="gap:4px;">
+        <input type="color" id="tc-color-${esc(t)}" value="${color}" oninput="document.getElementById('tc-hex-${esc(t)}').value=this.value;" onchange="syncTypeColorHex('${esc(t)}')">
+        <input type="text" id="tc-hex-${esc(t)}" value="${color}" style="width:78px;font-size:11px;" oninput="(function(v,id){if(/^#[0-9a-fA-F]{6}$/.test(v))document.getElementById('tc-color-'+id).value=v;})( this.value,'${esc(t)}'  )">
+      </div>
+      <span class="type-label">${esc(t)}${isBuiltin?'':' <span style="font-size:10px;color:var(--text3);">(custom)</span>'}</span>
+      <select class="type-gcal-select" id="tc-gcal-${esc(t)}">${gcalOpts}</select>
+      ${isBuiltin?'<span style="width:26px;"></span>':`<button class="icon-btn del" onclick="removeCustomType('${esc(t)}')" title="Remove type" style="width:26px;">${trashIcon()}</button>`}
+    </div>`;
+  }).join('');
+
+  // UI colors
+  const defaults = {accent:'#1A1917', bg:'#F7F6F3', surface:'#FFFFFF'};
+  const accent = uiColors.accent || defaults.accent;
+  const bg = uiColors.bg || defaults.bg;
+  const surface = uiColors.surface || defaults.surface;
+  document.getElementById('ui-accent-color').value = accent;
+  document.getElementById('ui-accent-hex').value = accent;
+  document.getElementById('ui-bg-color').value = bg;
+  document.getElementById('ui-bg-hex').value = bg;
+  document.getElementById('ui-surface-color').value = surface;
+  document.getElementById('ui-surface-hex').value = surface;
+
+  // Sync color pickers live
+  ['ui-accent','ui-bg','ui-surface'].forEach(id=>{
+    document.getElementById(id+'-color').oninput = function(){
+      document.getElementById(id+'-hex').value = this.value;
+      previewUIColors();
+    };
+  });
+}
+
+function syncTypeColorHex(type){
+  const colorEl = document.getElementById('tc-color-'+type);
+  const hexEl = document.getElementById('tc-hex-'+type);
+  if(colorEl && hexEl) hexEl.value = colorEl.value;
+}
+
+function syncColorFromHex(colorId, hexId, reverse=false){
+  // reverse=true means hexId is actually the color picker id and colorId is the hex
+  const colorEl = document.getElementById(reverse ? hexId : colorId);
+  const hexEl = document.getElementById(reverse ? colorId : hexId);
+  if(!colorEl || !hexEl) return;
+  const val = hexEl.value.trim();
+  if(/^#[0-9a-fA-F]{6}$/.test(val)) colorEl.value = val;
+  if(!reverse) previewUIColors();
+}
+
+function previewUIColors(){
+  const accent = document.getElementById('ui-accent-color')?.value;
+  const bg = document.getElementById('ui-bg-color')?.value;
+  const surface = document.getElementById('ui-surface-color')?.value;
+  if(accent) document.documentElement.style.setProperty('--text', accent);
+  if(bg) document.documentElement.style.setProperty('--bg', bg);
+  if(surface) document.documentElement.style.setProperty('--surface', surface);
+}
+
+function applyUIColors(){
+  if(!uiColors || !Object.keys(uiColors).length) return;
+  if(uiColors.accent) document.documentElement.style.setProperty('--text', uiColors.accent);
+  if(uiColors.bg) document.documentElement.style.setProperty('--bg', uiColors.bg);
+  if(uiColors.surface) document.documentElement.style.setProperty('--surface', uiColors.surface);
+}
+
+function resetUIColors(){
+  document.documentElement.style.removeProperty('--text');
+  document.documentElement.style.removeProperty('--bg');
+  document.documentElement.style.removeProperty('--surface');
+  const defaults = {accent:'#1A1917', bg:'#F7F6F3', surface:'#FFFFFF'};
+  document.getElementById('ui-accent-color').value = defaults.accent;
+  document.getElementById('ui-accent-hex').value = defaults.accent;
+  document.getElementById('ui-bg-color').value = defaults.bg;
+  document.getElementById('ui-bg-hex').value = defaults.bg;
+  document.getElementById('ui-surface-color').value = defaults.surface;
+  document.getElementById('ui-surface-hex').value = defaults.surface;
+}
+
+function addCustomType(){
+  const input = document.getElementById('new-type-input');
+  const name = input.value.trim();
+  if(!name){ toast('Enter a type name.'); return; }
+  if(allTypes().map(t=>t.toLowerCase()).includes(name.toLowerCase())){ toast('Type already exists.'); return; }
+  customTypes.push(name);
+  localStorage.setItem('wl2_custom_types', JSON.stringify(customTypes));
+  input.value = '';
+  buildSettingsUI();
+  populateTypeSelects();
+  toast(`Type "${name}" added.`);
+}
+
+function removeCustomType(name){
+  if(!confirm(`Remove type "${name}"? Entries with this type will keep their value.`)) return;
+  customTypes = customTypes.filter(t=>t!==name);
+  localStorage.setItem('wl2_custom_types', JSON.stringify(customTypes));
+  buildSettingsUI();
+  populateTypeSelects();
+  toast(`Type "${name}" removed.`);
+}
+
+function saveSettings(){
+  // Collect type colors and gcal IDs
+  allTypes().forEach(t => {
+    const hexEl = document.getElementById('tc-hex-'+t);
+    const gcalEl = document.getElementById('tc-gcal-'+t);
+    if(hexEl){
+      const val = hexEl.value.trim();
+      if(/^#[0-9a-fA-F]{6}$/.test(val)) typeColors[t] = val;
+    }
+    if(gcalEl) typeGCalIds[t] = gcalEl.value;
+  });
+  localStorage.setItem('wl2_type_colors', JSON.stringify(typeColors));
+  localStorage.setItem('wl2_type_gcal_ids', JSON.stringify(typeGCalIds));
+
+  // UI colors
+  uiColors = {
+    accent: document.getElementById('ui-accent-hex').value.trim() || document.getElementById('ui-accent-color').value,
+    bg: document.getElementById('ui-bg-hex').value.trim() || document.getElementById('ui-bg-color').value,
+    surface: document.getElementById('ui-surface-hex').value.trim() || document.getElementById('ui-surface-color').value,
+  };
+  localStorage.setItem('wl2_ui_colors', JSON.stringify(uiColors));
+  applyUIColors();
+  closeSettings();
+  render();
+  toast('Settings saved.');
+}
+
+// ── Changelog ──────────────────────────────────────────────────────────────
+function openChangelog(){ document.getElementById('changelog-modal').classList.add('open'); }
+function closeChangelog(){ document.getElementById('changelog-modal').classList.remove('open'); }
+
+// ── AI Panel ───────────────────────────────────────────────────────────────
+let aiKey = localStorage.getItem('wl2_ai_key') || '';
+let aiModel = localStorage.getItem('wl2_ai_model') || 'llama-3.3-70b-versatile';
+
+function initAI(){
+  if(aiKey){
+    document.getElementById('ai-setup').style.display='none';
+    const modelRow = document.getElementById('ai-model-row');
+    modelRow.style.display='flex';
+    const sel = document.getElementById('ai-model-select');
+    const known = [...sel.options].map(o=>o.value);
+    if(known.includes(aiModel)) sel.value=aiModel;
+    else { sel.value='custom'; document.getElementById('ai-custom-model-row').style.display='block'; document.getElementById('ai-custom-model-input').value=aiModel; }
+    document.getElementById('ai-model-badge').textContent='Connected';
+    document.getElementById('ai-model-badge').style.color='var(--success)';
+    document.getElementById('ai-messages').innerHTML='<div class="ai-msg bot">Hi! I can help you manage your work log. Ask me to summarise tasks, find overdue items, add or edit entries, and more.</div>';
+  }
+}
+
+function saveAIKey(){
+  const k = document.getElementById('ai-key-input').value.trim();
+  if(!k){ toast('Please paste your Groq API key (starts with gsk_).'); return; }
+  aiKey = k; localStorage.setItem('wl2_ai_key', k);
+  document.getElementById('ai-setup').style.display='none';
+  const modelRow = document.getElementById('ai-model-row');
+  modelRow.style.display='flex';
+  document.getElementById('ai-model-badge').textContent='Connected';
+  document.getElementById('ai-model-badge').style.color='var(--success)';
+  document.getElementById('ai-messages').innerHTML='<div class="ai-msg bot">Connected! Ask me anything about your work log.</div>';
+  toast('AI connected.');
+}
+
+function saveModel(){
+  const sel = document.getElementById('ai-model-select');
+  if(sel.value==='custom'){
+    document.getElementById('ai-custom-model-row').style.display='block';
+  } else {
+    document.getElementById('ai-custom-model-row').style.display='none';
+    aiModel = sel.value;
+    localStorage.setItem('wl2_ai_model', aiModel);
+    toast('Model switched to '+sel.options[sel.selectedIndex].text);
+  }
+}
+
+function saveCustomModel(){
+  const v = document.getElementById('ai-custom-model-input').value.trim();
+  if(v){ aiModel=v; localStorage.setItem('wl2_ai_model', v); }
+}
+
+function disconnectAI(){
+  aiKey=''; localStorage.removeItem('wl2_ai_key');
+  document.getElementById('ai-setup').style.display='block';
+  document.getElementById('ai-model-row').style.display='none';
+  document.getElementById('ai-custom-model-row').style.display='none';
+  document.getElementById('ai-model-badge').textContent='Not connected';
+  document.getElementById('ai-model-badge').style.color='';
+  toast('AI disconnected.');
+}
+
+async function testModel(){
+  if(!aiKey){ toast('Connect your API key first.'); return; }
+  const badge = document.getElementById('ai-model-badge');
+  badge.textContent='Testing…'; badge.style.color='var(--warn)';
+  try{
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+aiKey},
+      body:JSON.stringify({model:aiModel, messages:[{role:'user',content:'Reply with just the word OK.'}], max_tokens:5})
+    });
+    const data = await resp.json();
+    if(data.error){
+      badge.textContent='Unavailable'; badge.style.color='var(--danger)';
+      toast('Error: '+data.error.message.slice(0,80), 4000);
+    } else {
+      badge.textContent='Connected ✓'; badge.style.color='var(--success)';
+      toast('AI is working!');
+      setTimeout(()=>{ badge.textContent='Connected'; },3000);
+    }
+  }catch{
+    badge.textContent='Error'; badge.style.color='var(--danger)';
+    toast('Could not reach Groq API.');
+  }
+}
+
+function toggleAI(){
+  const p = document.getElementById('ai-panel');
+  p.classList.toggle('open');
+  if(p.classList.contains('open')) document.getElementById(aiKey ? 'ai-input' : 'ai-key-input').focus();
+}
+
+function aiSuggest(text){ document.getElementById('ai-input').value=text; sendAI(); }
+
+async function sendAI(){
+  if(!aiKey){ toast('Please add your Groq API key first.'); return; }
+  const input = document.getElementById('ai-input');
+  const text = input.value.trim(); if(!text) return;
+  input.value='';
+  appendMsg(text,'user');
+  const loadId = appendMsg('Thinking…','bot loading');
+  const context = buildContext();
+  const systemPrompt = `You are a helpful work-log assistant. The user has a work log with entries. Help them query, summarise, analyse tasks, or make changes.
+
+When the user wants to ADD an entry, include this block in your response:
+<action>{"type":"add","name":"...","workType":"...","deadline":"YYYY-MM-DD","remark":"..."}</action>
+
+When the user wants to DELETE an entry, include:
+<action>{"type":"delete","id":NUMERIC_ID}</action>
+
+When the user wants to EDIT an entry, include:
+<action>{"type":"edit","id":NUMERIC_ID,"name":"...","workType":"...","deadline":"YYYY-MM-DD","remark":"..."}</action>
+
+Always include a friendly plain-text response. Keep it concise. Today is ${today()}.`;
+  try{
+    const resp = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+aiKey},
+      body:JSON.stringify({
+        model: aiModel,
+        messages:[
+          {role:'system', content: systemPrompt},
+          {role:'user', content:`My work log:\n${context}\n\nRequest: ${text}`}
+        ],
+        max_tokens: 1000
+      })
+    });
+    const data = await resp.json();
+    removeMsg(loadId);
+    if(data.error){ appendMsg('Error: '+data.error.message,'bot'); return; }
+    const full = data.choices?.[0]?.message?.content || '';
+    const actionMatch = full.match(/<action>([\s\S]*?)<\/action>/);
+    const displayText = full.replace(/<action>[\s\S]*?<\/action>/g,'').trim();
+    appendMsg(displayText || '(done)', 'bot');
+    if(actionMatch){
+      try{
+        const act = JSON.parse(actionMatch[1]);
+        if(act.type==='add'){
+          entries.unshift({id:Date.now(), name:act.name||'Untitled', type:act.workType||'', deadline:act.deadline||'', remark:act.remark||'', created:new Date().toISOString()});
+          save(); render(); toast('AI added an entry.');
+        } else if(act.type==='delete'){
+          entries=entries.filter(e=>e.id!==act.id); save(); render(); toast('AI deleted the entry.');
+        } else if(act.type==='edit'){
+          const e=entries.find(x=>x.id===act.id);
+          if(e){ Object.assign(e,{name:act.name||e.name,type:act.workType||e.type,deadline:act.deadline||e.deadline,remark:act.remark||e.remark}); save(); render(); toast('AI updated the entry.'); }
+        }
+      }catch(err){ console.error('Action parse error',err); }
+    }
+  }catch(err){
+    removeMsg(loadId);
+    appendMsg('Could not reach Groq. Check your internet connection or API key.','bot');
+  }
+}
+
+function buildContext(){
+  const active = entries.length ? 'ACTIVE:\n'+entries.map(e=>`[ID:${e.id}] ${e.name} | Type:${e.type||'—'} | Deadline:${e.deadline||'—'} | Remark:${e.remark||'—'}`).join('\n') : 'ACTIVE: (none)';
+  const arch = archived.length ? '\nARCHIVED:\n'+archived.map(e=>`[ID:${e.id}] ${e.name} | Type:${e.type||'—'} | Deadline:${e.deadline||'—'}`).join('\n') : '';
+  return active + arch;
+}
+
+let msgCounter = 0;
+function appendMsg(text, cls){
+  const id = 'msg-'+(++msgCounter);
+  const msgs = document.getElementById('ai-messages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg '+cls; div.id = id; div.textContent = text;
+  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight; return id;
+}
+function removeMsg(id){ document.getElementById(id)?.remove(); }
+initAI();
+</script>
+</body>
+</html>
