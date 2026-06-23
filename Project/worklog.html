@@ -511,7 +511,7 @@ let viewMode = 'active'; // 'active' or 'archive'
 let gcalToken = localStorage.getItem('wl2_gcal_token') || null;
 let filterType = 'All';
 let sortMode = 'deadline';
-let sortDir = 'asc'; // deadline default: soonest first
+let sortDir = 'desc'; // deadline default: furthest first
 let pinnedId = null; // newly added entry shown at top until sort changes
 let editingId = null;
 let syncMode = 'event'; // 'event' or 'task'
@@ -793,7 +793,7 @@ function render(){
 
   // Update archive count badge
   const archiveBadge = document.getElementById('archive-count');
-  if(archiveBadge) archiveBadge.textContent = archived.length > 0 ? archived.length : '';
+  if(archiveBadge) archiveBadge.textContent = '';
 
   const shown = filterType==='All' ? sorted(source) : sorted(source).filter(e=>e.type===filterType);
   document.getElementById('entry-count').textContent = shown.length;
