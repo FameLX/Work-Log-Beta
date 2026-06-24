@@ -503,6 +503,9 @@ svg.icon.sm{width:13px;height:13px;}
 // ── State ──────────────────────────────────────────────────────────────────
 let entries = JSON.parse(localStorage.getItem('wl2_entries') || '[]');
 let archived = JSON.parse(localStorage.getItem('wl2_archived') || '[]');
+// Migration: add updated field to old entries that don't have it
+entries.forEach(e => { if(!e.updated) e.updated = e.created; });
+archived.forEach(e => { if(!e.updated) e.updated = e.created; });
 let viewMode = 'active'; // 'active' or 'archive'
 let gcalToken = localStorage.getItem('wl2_gcal_token') || null;
 let filterType = 'All';
@@ -595,7 +598,8 @@ function addEntry(){
   const deadlineEnd = isTask ? '' : v('f-deadline-end');
   const color = typeColors[type] || null;
   const gcalColorId = typeGCalIds[type] || undefined;
-  const entry = {id: Date.now(), name, type, deadline, deadlineEnd, time, remark, color, gcalColorId, syncMode: isTask?'task':'event', created: new Date().toISOString()};
+  const now = new Date().toISOString();
+  const entry = {id: Date.now(), name, type, deadline, deadlineEnd, time, remark, color, gcalColorId, syncMode: isTask?'task':'event', created: now, updated: now};
   entries.unshift(entry);
   pinnedId = entry.id;
   save(); render(); clearForm();
@@ -638,6 +642,7 @@ function saveEdit(id){
     e.deadline = v('edit-deadline-'+id);
     e.deadlineEnd = v('edit-deadline-end-'+id);
   }
+  e.updated = new Date().toISOString();
   editingId = null;
   save(); render(); toast('Entry updated.');
   if(gcalToken && e.deadline){
@@ -940,21 +945,24 @@ function taskSyncIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><path d=
 
 // ── Export ─────────────────────────────────────────────────────────────────
 function exportCSV(){
-  const rows = [['Name','Type','Deadline','Time','Remark','Created'],...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created])];
+  const rows = [['Name','Type','Deadline','Time','Remark','Created','Updated'],...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created?.replace('Z',' UTC')||'',e.updated?.replace('Z',' UTC')||''])];
   const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   // \uFEFF = UTF-8 BOM — required for Excel to correctly read Thai and other non-ASCII characters
   dl('worklog.csv','data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv));
 }
-function exportJSON(){ dl('worklog.json','data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(entries,null,2))); }
+function exportJSON(){
+  const sanitized = entries.map(e=>({...e,created:e.created?.replace('Z',' UTC'),updated:e.updated?.replace('Z',' UTC')}));
+  dl('worklog.json','data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(sanitized,null,2)));
+}
 function exportXLSX(){
   if(typeof XLSX === 'undefined'){ toast('SheetJS not loaded yet, try again.'); return; }
   const rows = [
-    ['Name','Type','Deadline','Time','Remark','Created'],
-    ...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created])
+    ['Name','Type','Deadline','Time','Remark','Created','Updated'],
+    ...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created?.replace('Z',' UTC')||'',e.updated?.replace('Z',' UTC')||''])
   ];
   const ws = XLSX.utils.aoa_to_sheet(rows);
   // Column widths
-  ws['!cols'] = [{wch:30},{wch:12},{wch:14},{wch:10},{wch:40},{wch:22}];
+  ws['!cols'] = [{wch:30},{wch:12},{wch:14},{wch:10},{wch:40},{wch:22},{wch:22}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Work Log');
   XLSX.writeFile(wb, 'worklog.xlsx');
@@ -1470,13 +1478,14 @@ Always include a friendly plain-text response. Keep it concise. Today is ${today
       try{
         const act = JSON.parse(actionMatch[1]);
         if(act.type==='add'){
-          entries.unshift({id:Date.now(), name:act.name||'Untitled', type:act.workType||'', deadline:act.deadline||'', remark:act.remark||'', created:new Date().toISOString()});
+          const now = new Date().toISOString();
+          entries.unshift({id:Date.now(), name:act.name||'Untitled', type:act.workType||'', deadline:act.deadline||'', remark:act.remark||'', created:now, updated:now});
           save(); render(); toast('AI added an entry.');
         } else if(act.type==='delete'){
           entries=entries.filter(e=>e.id!==act.id); save(); render(); toast('AI deleted the entry.');
         } else if(act.type==='edit'){
           const e=entries.find(x=>x.id===act.id);
-          if(e){ Object.assign(e,{name:act.name||e.name,type:act.workType||e.type,deadline:act.deadline||e.deadline,remark:act.remark||e.remark}); save(); render(); toast('AI updated the entry.'); }
+          if(e){ Object.assign(e,{name:act.name||e.name,type:act.workType||e.type,deadline:act.deadline||e.deadline,remark:act.remark||e.remark,updated:new Date().toISOString()}); save(); render(); toast('AI updated the entry.'); }
         }
       }catch(err){ console.error('Action parse error',err); }
     }
