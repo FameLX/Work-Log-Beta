@@ -94,6 +94,8 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .chip.overdue{background:var(--danger-bg);color:var(--danger);border-color:rgba(153,27,27,.25);}
 .chip.soon{background:var(--warn-bg);color:var(--warn);border-color:rgba(146,64,14,.25);}
 .chip.today{background:#fcc0a3;color:#1A1917;border-color:#fcc0a3;}
+.chip.in-progress{background:var(--success-bg);color:var(--success);border-color:rgba(45,106,79,.25);}
+.chip.last-day{background:#FF8C7F;color:#1A1917;border-color:#FF8C7F;}
 .entry-actions{display:flex;gap:4px;flex-shrink:0;}
 .icon-btn{width:30px;height:30px;border-radius:8px;border:none;background:transparent;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all .12s;}
 .icon-btn:hover{background:var(--surface2);color:var(--text);}
@@ -859,7 +861,7 @@ function entryHTML(e, isArchived=false){
   const deadlineChip = e.deadline ? (() => {
     const rangeStr = e.deadlineEnd ? `${fmtDate(e.deadline)} → ${fmtDate(e.deadlineEnd)}` : fmtDate(e.deadline);
     const timeStr = e.time ? ' · '+fmtTime(e.time) : '';
-    const statusLabel = status===' overdue' ? ' · overdue' : status===' today' ? ' · I am due <b>TODAY!!!</b>. Don\'t forget to do me. <b>YAY!!!</b>' : status===' soon' ? ' · soon' : '';
+    const statusLabel = status===' overdue' ? ' · overdue' : status===' today' ? ' · I am due <b>TODAY!!!</b>. Don\'t forget to do me. <b>YAY!!!</b>' : status===' soon' ? ' · soon' : status===' in-progress' ? ' · In Progress' : status===' last-day' ? ' · <b>Hey, Last Chance</b>, is this done yet?' : '';
     return `<span class="chip deadline${status}">${rangeStr}${timeStr}${statusLabel.includes('<b>') ? statusLabel : esc(statusLabel)}</span>`;
   })() : '';
 
@@ -894,15 +896,30 @@ function entryHTML(e, isArchived=false){
 }
 
 function deadlineStatus(d, dEnd){
-  const check = dEnd || d;
-  if(!check) return '';
+  if(!d) return '';
   const now = new Date(); now.setHours(0,0,0,0);
-  const dl = new Date(check); dl.setHours(0,0,0,0);
-  const diff = Math.round((dl-now)/(86400000));
-  if(diff<0) return ' overdue';
-  if(diff===0) return ' today';
-  if(diff<=3) return ' soon';
-  return '';
+  const start = new Date(d); start.setHours(0,0,0,0);
+  const end = dEnd ? new Date(dEnd) : start;
+  end.setHours(0,0,0,0);
+
+  const isMultiDay = dEnd && d !== dEnd;
+
+  if(isMultiDay) {
+    const startDiff = Math.round((start - now) / 86400000);
+    const endDiff = Math.round((end - now) / 86400000);
+
+    if(endDiff < 0) return ' overdue';
+    if(endDiff === 0) return ' last-day';
+    if(startDiff <= 0 && endDiff > 0) return ' in-progress';
+    if(startDiff > 0 && startDiff <= 3) return ' soon';
+    return '';
+  } else {
+    const diff = Math.round((start - now) / 86400000);
+    if(diff < 0) return ' overdue';
+    if(diff === 0) return ' today';
+    if(diff <= 3) return ' soon';
+    return '';
+  }
 }
 
 function fmtDate(d){
