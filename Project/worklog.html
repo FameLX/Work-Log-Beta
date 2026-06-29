@@ -69,7 +69,7 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .main-header h1{font-size:18px;font-weight:500;letter-spacing:-.3px;}
 .entry-count{font-size:12px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:99px;}
 .main-header-spacer{flex:1;}
-.filter-bar{padding:12px 24px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
+.filter-bar{padding:12px 24px;display:flex;gap:6px;flex-wrap:nowrap;align-items:center;border-bottom:1px solid var(--border);overflow:hidden;}
 .filter-chip{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s;}
 .filter-chip:hover{border-color:var(--border2);}
 .filter-chip.active{background:var(--text);color:#fff;border-color:var(--text);}
@@ -187,8 +187,8 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .trash-item-name{font-size:14px;font-weight:500;margin-bottom:2px;}
 
 /* Search input */
-.search-input{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text);outline:none;width:150px;transition:border-color .15s,width .2s;font-family:var(--font);}
-.search-input:focus{border-color:var(--border2);width:190px;}
+.search-input{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text);outline:none;width:200px;transition:border-color .15s;font-family:var(--font);}
+.search-input:focus{border-color:var(--border2);}
 
 /* Due/Overdue alert modal */
 .due-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:120;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
@@ -278,7 +278,11 @@ svg.icon.sm{width:13px;height:13px;}
         <div id="f-deadline-single" style="display:none;margin-bottom:6px;">
           <input type="date" id="f-deadline-task" style="min-width:0;width:100%;"/>
         </div>
-        <input type="time" id="f-time" placeholder="Time (optional)" style="font-size:13px;"/>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="time" id="f-time" placeholder="Start time" style="font-size:13px;flex:1;"/>
+          <span style="font-size:12px;color:var(--text3);">→</span>
+          <input type="time" id="f-time-to" placeholder="End time" style="font-size:13px;flex:1;"/>
+        </div>
       </div>
       <div class="form-group">
         <label class="field-label" for="f-remark">Remark</label>
@@ -323,6 +327,7 @@ svg.icon.sm{width:13px;height:13px;}
         <svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
       </button>
     </div>
+    <div id="sync-all-container"></div>
     <div class="filter-bar" id="filter-bar"></div>
     <div class="entries" id="entries-list"></div>
   </main>
@@ -467,10 +472,10 @@ svg.icon.sm{width:13px;height:13px;}
     <!-- UI Colours -->
     <div class="settings-section">
       <h3>Interface Colour</h3>
-      <div class="desc">Customise the accent colour used for primary buttons and highlights.</div>
+      <div class="desc">Customise the text, background, and surface colours of the interface.</div>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div style="display:flex;align-items:center;gap:12px;">
-          <span style="font-size:13px;color:var(--text2);width:120px;">Accent colour</span>
+          <span style="font-size:13px;color:var(--text2);width:120px;">Text colour</span>
           <div class="color-input-wrap">
             <input type="color" id="ui-accent-color" value="#1A1917"/>
             <input type="text" id="ui-accent-hex" placeholder="#1A1917" oninput="syncColorFromHex('ui-accent-color','ui-accent-hex')"/>
@@ -623,13 +628,14 @@ function addEntry(){
   const remark = v('f-remark');
   if(!name){ toast('Enter a work name.'); return; }
   const time = v('f-time');
+  const timeTo = v('f-time-to');
   const isTask = syncMode === 'task';
   const deadline = isTask ? v('f-deadline-task') : v('f-deadline');
   const deadlineEnd = isTask ? '' : v('f-deadline-end');
   const color = typeColors[type] || null;
   const gcalColorId = typeGCalIds[type] || undefined;
   const now = new Date().toISOString();
-  const entry = {id: Date.now(), name, type, deadline, deadlineEnd, time, remark, color, gcalColorId, syncMode: isTask?'task':'event', created: now, updated: now};
+  const entry = {id: Date.now(), name, type, deadline, deadlineEnd, time, timeTo, remark, color, gcalColorId, syncMode: isTask?'task':'event', created: now, updated: now};
   entries.unshift(entry);
   pinnedId = entry.id;
   save(); render(); clearForm();
@@ -710,6 +716,7 @@ function saveEdit(id){
   e.name = name;
   e.type = v('edit-type-'+id);
   e.time = v('edit-time-'+id);
+  e.timeTo = v('edit-time-to-'+id);
   e.remark = v('edit-remark-'+id);
   e.color = typeColors[e.type] || e.color || null;
   e.gcalColorId = typeGCalIds[e.type] || undefined;
@@ -827,7 +834,7 @@ function dueExtend(id){
 function v(id){ return document.getElementById(id)?.value.trim() || ''; }
 
 function clearForm(){
-  ['f-name','f-remark','f-time','f-deadline-end'].forEach(id=>document.getElementById(id).value='');
+  ['f-name','f-remark','f-time','f-time-to','f-deadline-end'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-type').value='';
   document.getElementById('f-deadline').value=today();
   document.getElementById('f-deadline-task').value=today();
@@ -884,12 +891,13 @@ function render(){
   const source = viewMode==='active' ? entries : archived;
   const types = ['All', ...new Set(source.map(e=>e.type).filter(Boolean))];
   const fb = document.getElementById('filter-bar');
-  const syncAllBtn = (gcalToken && viewMode==='active') ? `<button class="btn btn-sm btn-sync-all" onclick="syncAllToGCal()" style="flex-shrink:0;">
+  const syncContainer = document.getElementById('sync-all-container');
+  if(syncContainer) syncContainer.innerHTML = (gcalToken && viewMode==='active') ? `<button class="btn btn-sm btn-sync-all" onclick="syncAllToGCal()" style="flex-shrink:0;">
     <svg class="icon sm" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
     Sync All to GCal
   </button>` : '';
   const searchBox = `<input class="search-input" type="text" id="search-input" placeholder="Search…" value="${esc(searchQuery)}" oninput="setSearch(this.value)" style="margin-left:auto;flex-shrink:0;"/>`;
-  fb.innerHTML = types.map(t=>`<button class="filter-chip${filterType===t?' active':''}" onclick="setFilter('${esc(t)}')">${esc(t)}</button>`).join('') + searchBox + syncAllBtn;
+  fb.innerHTML = types.map(t=>`<button class="filter-chip${filterType===t?' active':''}" onclick="setFilter('${esc(t)}')">${esc(t)}</button>`).join('') + searchBox;
 
   // Update archive count badge
   const archiveBadge = document.getElementById('archive-count');
@@ -934,7 +942,7 @@ function entryHTML(e, isArchived=false){
               <div><label class="field-label">End date</label><input type="date" id="edit-deadline-end-${e.id}" value="${e.deadlineEnd||''}" title="Leave blank for single day"/></div>
               `}
             </div>
-            <div><label class="field-label">Time${isTaskEntry?' (shown in task title)':''}</label><input type="time" id="edit-time-${e.id}" value="${e.time||''}"/></div>
+            <div><label class="field-label">Time${isTaskEntry?' (shown in task title)':''}</label><div style="display:flex;gap:6px;align-items:center;"><input type="time" id="edit-time-${e.id}" value="${e.time||''}" style="flex:1;"/><span style="font-size:12px;color:var(--text3);">→</span><input type="time" id="edit-time-to-${e.id}" value="${e.timeTo||''}" style="flex:1;"/></div></div>
             <div><label class="field-label">Remark</label><textarea id="edit-remark-${e.id}" style="min-height:70px;">${esc(e.remark||'')}</textarea></div>
             <div class="edit-actions">
               <button class="btn btn-sm" onclick="cancelEdit()">Cancel</button>
@@ -1133,11 +1141,11 @@ async function syncAllToGCal(silent=false){
   if(!silent) toast(`Syncing ${toSync.length} entries…`, 3000);
   let synced = 0;
   for(const e of toSync){
-    if(e.syncMode==='task') await pushToGTask(e);
-    else await pushToGCal(e);
+    if(e.syncMode==='task') await pushToGTask(e, silent);
+    else await pushToGCal(e, silent);
     synced++;
   }
-  toast(`Done! ${synced} entries synced to Google Calendar.`);
+  toast(`Done! ${synced} ${synced===1?'entry':'entries'} synced to Google Calendar.`);
 }
 
 function buildGCalEvent(entry){
@@ -1145,9 +1153,11 @@ function buildGCalEvent(entry){
   const colorId = entry.gcalColorId || undefined;
   let start, end;
   if(entry.time){
-    start = {dateTime: `${entry.deadline}T${entry.time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone};
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const endDate = entry.deadlineEnd || entry.deadline;
-    end   = {dateTime: `${endDate}T${entry.time}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone};
+    const endTime = entry.timeTo || entry.time;
+    start = {dateTime: `${entry.deadline}T${entry.time}:00`, timeZone: tz};
+    end   = {dateTime: `${endDate}T${endTime}:00`, timeZone: tz};
   } else if(entry.deadlineEnd){
     // Multi-day all-day event: GCal end date is exclusive, so add 1 day
     const endExclusive = new Date(entry.deadlineEnd);
@@ -1161,45 +1171,32 @@ function buildGCalEvent(entry){
   return {summary:entry.name, description:desc, start, end, ...(colorId&&{colorId})};
 }
 
-async function pushToGCal(entry){
-  if(!gcalToken||!entry?.deadline){ toast('No deadline set.'); return; }
+async function pushToGCal(entry, silent=false){
+  if(!gcalToken||!entry?.deadline){ if(!silent) toast('No deadline set.'); return; }
   try{
-    // ── Duplicate check ──────────────────────────────────────────────────
-    const dayStart = entry.deadline+'T00:00:00Z';
-    const dayEnd   = entry.deadline+'T23:59:59Z';
-    const listRes  = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${dayStart}&timeMax=${dayEnd}&singleEvents=true`,
-      {headers:{Authorization:`Bearer ${gcalToken}`}}
-    );
-    if(listRes.ok){
-      const listData = await listRes.json();
-      const dup = (listData.items||[]).find(ev=>ev.summary===entry.name);
-      if(dup){
-        // Store the existing event ID so future edits can PATCH it
-        entry.gcalEventId = dup.id;
-        save();
-        toast(`Already in Calendar on ${fmtDate(entry.deadline)} — skipped.`);
-        return;
-      }
+    // ── If we already have the event ID, PATCH instead of creating a duplicate
+    if(entry.gcalEventId){
+      await patchGCal(entry, silent);
+      return;
     }
-    // ── Create new event ─────────────────────────────────────────────────
+    // ── No ID: create new event ───────────────────────────────────────────
     const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events',{
       method:'POST', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
       body:JSON.stringify(buildGCalEvent(entry))
     });
     if(res.ok){
       const created = await res.json();
-      entry.gcalEventId = created.id; // save for future delete/patch
+      entry.gcalEventId = created.id;
       save();
-      toast(`"${entry.name}" added to Google Calendar.`);
+      if(!silent) toast(`"${entry.name}" added to Google Calendar.`);
     } else {
       const err = await res.json();
-      toast('Calendar error — ' + (err.error?.message||'token may have expired.'));
+      if(!silent) toast('Calendar error — ' + (err.error?.message||'token may have expired.'));
     }
-  }catch(e){ toast('Could not reach Google Calendar.'); }
+  }catch(e){ if(!silent) toast('Could not reach Google Calendar.'); }
 }
 
-async function patchGCal(entry){
+async function patchGCal(entry, silent=false){
   if(!gcalToken||!entry?.gcalEventId) return;
   try{
     const res = await fetch(
@@ -1207,9 +1204,9 @@ async function patchGCal(entry){
       {method:'PATCH', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
        body:JSON.stringify(buildGCalEvent(entry))}
     );
-    if(res.ok) toast(`Calendar event updated for "${entry.name}".`);
-    else toast('Calendar update failed — token may have expired.');
-  }catch{ toast('Could not reach Google Calendar.'); }
+    if(res.ok){ if(!silent) toast(`Calendar event updated for "${entry.name}".`); }
+    else{ if(!silent) toast('Calendar update failed — token may have expired.'); }
+  }catch{ if(!silent) toast('Could not reach Google Calendar.'); }
 }
 
 async function deleteFromGCal(entry){
@@ -1225,20 +1222,13 @@ async function deleteFromGCal(entry){
 }
 
 // ── Google Tasks ────────────────────────────────────────────────────────────
-async function pushToGTask(entry){
-  if(!gcalToken||!entry?.deadline){ toast('No due date set.'); return; }
+async function pushToGTask(entry, silent=false){
+  if(!gcalToken||!entry?.deadline){ if(!silent) toast('No due date set.'); return; }
   try{
-    // Duplicate check — fetch all tasks and match by title
-    const listRes = await fetch('https://tasks.googleapis.com/tasks/v1/lists/@default/tasks?showCompleted=false',
-      {headers:{Authorization:`Bearer ${gcalToken}`}});
-    if(listRes.ok){
-      const listData = await listRes.json();
-      const titleToCheck = buildGTaskTitle(entry);
-      const dup = (listData.items||[]).find(t=>t.title===titleToCheck);
-      if(dup){
-        entry.gcalTaskId = dup.id; save();
-        toast(`Already in Google Tasks — skipped.`); return;
-      }
+    // If we already have the task ID, PATCH instead of creating a duplicate
+    if(entry.gcalTaskId){
+      await patchGTask(entry, silent);
+      return;
     }
     const body = {
       title: buildGTaskTitle(entry),
@@ -1253,15 +1243,15 @@ async function pushToGTask(entry){
     if(res.ok){
       const created = await res.json();
       entry.gcalTaskId = created.id; save();
-      toast(`"${entry.name}" added to Google Tasks.`);
+      if(!silent) toast(`"${entry.name}" added to Google Tasks.`);
     } else {
       const err = await res.json();
-      toast('Tasks error — '+(err.error?.message||'token may have expired.'));
+      if(!silent) toast('Tasks error — '+(err.error?.message||'token may have expired.'));
     }
-  }catch{ toast('Could not reach Google Tasks.'); }
+  }catch{ if(!silent) toast('Could not reach Google Tasks.'); }
 }
 
-async function patchGTask(entry){
+async function patchGTask(entry, silent=false){
   if(!gcalToken||!entry?.gcalTaskId) return;
   try{
     const body = {
@@ -1273,9 +1263,9 @@ async function patchGTask(entry){
       method:'PATCH', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
-    if(res.ok) toast(`Task updated for "${entry.name}".`);
-    else toast('Task update failed — token may have expired.');
-  }catch{ toast('Could not reach Google Tasks.'); }
+    if(res.ok){ if(!silent) toast(`Task updated for "${entry.name}".`); }
+    else{ if(!silent) toast('Task update failed — token may have expired.'); }
+  }catch{ if(!silent) toast('Could not reach Google Tasks.'); }
 }
 
 async function deleteFromGTask(entry){
@@ -1386,17 +1376,50 @@ function previewUIColors(){
   if(surface) document.documentElement.style.setProperty('--surface', surface);
 }
 
+function hexLuminance(hex){
+  const h = hex.replace('#','');
+  const r = parseInt(h.slice(0,2),16)/255;
+  const g = parseInt(h.slice(2,4),16)/255;
+  const b = parseInt(h.slice(4,6),16)/255;
+  const lin = v => v <= 0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+  return 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b);
+}
+
 function applyUIColors(){
   if(!uiColors || !Object.keys(uiColors).length) return;
-  if(uiColors.accent) document.documentElement.style.setProperty('--text', uiColors.accent);
-  if(uiColors.bg) document.documentElement.style.setProperty('--bg', uiColors.bg);
-  if(uiColors.surface) document.documentElement.style.setProperty('--surface', uiColors.surface);
+  const root = document.documentElement;
+  if(uiColors.accent) root.style.setProperty('--text', uiColors.accent);
+  if(uiColors.bg) root.style.setProperty('--bg', uiColors.bg);
+  if(uiColors.surface){
+    root.style.setProperty('--surface', uiColors.surface);
+    const lum = hexLuminance(uiColors.surface);
+    if(lum < 0.18){
+      // dark surface → light text
+      root.style.setProperty('--text', '#F0EFEA');
+      root.style.setProperty('--text2', '#B8B5AD');
+      root.style.setProperty('--text3', '#7A776F');
+      root.style.setProperty('--border', 'rgba(255,255,255,0.12)');
+      root.style.setProperty('--border2', 'rgba(255,255,255,0.25)');
+    } else {
+      // light surface → respect accent or default dark text
+      root.style.setProperty('--text', uiColors.accent || '#1A1917');
+      root.style.removeProperty('--text2');
+      root.style.removeProperty('--text3');
+      root.style.removeProperty('--border');
+      root.style.removeProperty('--border2');
+    }
+  }
 }
 
 function resetUIColors(){
-  document.documentElement.style.removeProperty('--text');
-  document.documentElement.style.removeProperty('--bg');
-  document.documentElement.style.removeProperty('--surface');
+  const root = document.documentElement;
+  root.style.removeProperty('--text');
+  root.style.removeProperty('--text2');
+  root.style.removeProperty('--text3');
+  root.style.removeProperty('--border');
+  root.style.removeProperty('--border2');
+  root.style.removeProperty('--bg');
+  root.style.removeProperty('--surface');
   const defaults = {accent:'#1A1917', bg:'#F7F6F3', surface:'#FFFFFF'};
   document.getElementById('ui-accent-color').value = defaults.accent;
   document.getElementById('ui-accent-hex').value = defaults.accent;
