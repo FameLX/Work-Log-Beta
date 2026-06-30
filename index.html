@@ -1525,8 +1525,13 @@ const GCAL_COLOR_OPTIONS = [
 ];
 const GCAL_COLOR_MAP = {
   '':'transparent',
-  '1':'#B39DDB','2':'#A4BDFC','3':'#D7AEFB','4':'#F691B2','5':'#FBBC04',
-  '6':'#FF887C','7':'#46BED8','8':'#616161','9':'#3C47DC','10':'#51B749','11':'#E67C73'
+  '1':'#a4bdfc','2':'#7ae7bf','3':'#dbadff','4':'#ff887c','5':'#fbd75b',
+  '6':'#ffb878','7':'#46d6db','8':'#e1e1e1','9':'#5484ed','10':'#51b749','11':'#dc2127'
+};
+
+const GCAL_COLOR_NAMES = {
+  '1':'Lavender','2':'Sage','3':'Grape','4':'Flamingo','5':'Banana',
+  '6':'Tangerine','7':'Peacock','8':'Graphite','9':'Blueberry','10':'Basil','11':'Tomato'
 };
 
 function openSettings(){
@@ -1538,11 +1543,14 @@ function closeSettings(){ document.getElementById('settings-overlay').classList.
 function updateGCalColorPreview(type){
   const select = document.getElementById('tc-gcal-'+type);
   const swatch = document.getElementById('tc-swatch-'+type);
+  const nameLabel = document.getElementById('tc-name-'+type);
   const gcalId = select.value;
   const color = GCAL_COLOR_MAP[gcalId] || 'transparent';
   swatch.style.background = color;
   swatch.style.opacity = gcalId ? '1' : '0.3';
+  if(nameLabel) nameLabel.textContent = GCAL_COLOR_NAMES[gcalId] || '';
   typeGCalIds[type] = gcalId;
+  save();
 }
 
 function buildSettingsUI(){
@@ -1561,7 +1569,10 @@ function buildSettingsUI(){
       </div>
       <span class="type-label">${esc(t)}${isBuiltin?'':' <span style="font-size:10px;color:var(--text3);">(custom)</span>'}</span>
       <select class="type-gcal-select" id="tc-gcal-${esc(t)}" onchange="updateGCalColorPreview('${esc(t)}')">${gcalOpts}</select>
-      <div class="gcal-color-swatch" id="tc-swatch-${esc(t)}" style="width:18px;height:18px;border-radius:4px;border:1px solid var(--border);background:${gcalColor};flex-shrink:0;${gcalId?'':'opacity:.3;'}"></div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <div class="gcal-color-swatch" id="tc-swatch-${esc(t)}" style="width:18px;height:18px;border-radius:4px;border:1px solid var(--border);background:${gcalColor};${gcalId?'':'opacity:.3;'}"></div>
+        <span id="tc-name-${esc(t)}" style="font-size:11px;color:var(--text2);min-width:60px;">${GCAL_COLOR_NAMES[gcalId] || ''}</span>
+      </div>
       ${isBuiltin?'<span style="width:26px;"></span>':`<button class="icon-btn del" onclick="removeCustomType('${esc(t)}')" title="Remove type" style="width:26px;">${trashIcon()}</button>`}
     </div>`;
   }).join('');
