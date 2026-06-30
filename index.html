@@ -199,8 +199,8 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .time-picker-modal.open{display:block;}
 .time-picker-content{display:flex;gap:8px;align-items:center;justify-content:center;}
 .time-picker-column{width:50px;height:150px;overflow:hidden;position:relative;border:1px solid var(--border);border-radius:4px;background:var(--surface2);}
-.time-picker-scroller{display:flex;flex-direction:column;align-items:center;padding:60px 0;cursor:default;height:100%;overflow-y:scroll;scroll-behavior:auto;scrollbar-width:none;}
-.time-picker-scroller::-webkit-scrollbar{display:none;}
+.time-picker-scroller{display:flex;flex-direction:column;align-items:center;padding:50px 0;cursor:grab;}
+.time-picker-scroller.grabbing{cursor:grabbing;}
 .time-picker-item{height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--text3);transition:color 0.1s;}
 .time-picker-item.active{color:var(--text);font-size:16px;font-weight:600;}
 .time-picker-center{position:absolute;top:50%;left:0;right:0;height:30px;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);pointer-events:none;transform:translateY(-50%);}
@@ -955,14 +955,34 @@ function createScrollerColumn(type){
 }
 
 function setupScrollerScroll(inputId, type, scroller, itemCount){
-  let scrollTimer = null;
+  let isDragging = false;
+  let startY = 0;
+  let startScroll = 0;
+
+  scroller.addEventListener('mousedown', (e)=>{
+    isDragging = true;
+    startY = e.clientY;
+    startScroll = scroller.scrollTop;
+    scroller.classList.add('grabbing');
+  });
+
+  document.addEventListener('mousemove', (e)=>{
+    if(!isDragging) return;
+    const delta = e.clientY - startY;
+    scroller.scrollTop = startScroll - delta;
+  });
+
+  document.addEventListener('mouseup', ()=>{
+    if(!isDragging) return;
+    isDragging = false;
+    scroller.classList.remove('grabbing');
+    snapToNearest(inputId, type, scroller, itemCount);
+  });
 
   scroller.addEventListener('wheel', (e)=>{
     e.preventDefault();
-    scroller.scrollTop += e.deltaY > 0 ? 30 : -30;
+    scroller.scrollTop += e.deltaY;
     updateActiveItem(scroller);
-    clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(()=>{ snapToNearest(inputId, type, scroller, itemCount); }, 150);
   }, {passive:false});
 
   scroller.addEventListener('scroll', ()=>{ updateActiveItem(scroller); });
@@ -973,20 +993,35 @@ function setupScrollerScroll(inputId, type, scroller, itemCount){
 function updateActiveItem(scroller){
   const items = scroller.querySelectorAll('.time-picker-item');
   const scrollTop = scroller.scrollTop;
+  const centerY = 75; // middle of 150px height
 
   items.forEach((item, idx)=>{
-    const itemCenter = idx * 30 + 15;
-    const dist = Math.abs(scrollTop + 75 - itemCenter);
-    if(dist < 16) item.classList.add('active');
+    const itemTop = idx * 30;
+    const itemBottom = itemTop + 30;
+    const itemCenter = itemTop + 15;
+    const dist = Math.abs(centerY - itemCenter);
+
+    if(dist < 20) item.classList.add('active');
     else item.classList.remove('active');
   });
 }
 
 function snapToNearest(inputId, type, scroller, itemCount){
+  const items = scroller.querySelectorAll('.time-picker-item');
   const scrollTop = scroller.scrollTop;
-  const nearest = Math.round(scrollTop / 30);
-  const clamped = Math.max(0, Math.min(nearest, itemCount - 1));
-  scroller.scrollTop = clamped * 30;
+  const centerY = 75;
+
+  let nearest = 0;
+  let minDist = Infinity;
+
+  items.forEach((item, idx)=>{
+    const itemTop = idx * 30;
+    const itemCenter = itemTop + 15;
+    const dist = Math.abs(centerY - itemCenter);
+    if(dist < minDist){ minDist = dist; nearest = idx; }
+  });
+
+  scroller.scrollTop = nearest * 30;
   updateActiveItem(scroller);
   updateTimeInputFromPicker(inputId);
 }
