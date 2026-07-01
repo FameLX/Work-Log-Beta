@@ -191,19 +191,21 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .search-input{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text);outline:none;width:100%;transition:border-color .15s;font-family:var(--font);box-sizing:border-box;}
 .search-input:focus{border-color:var(--border2);}
 
-/* Time Picker Scroll Wheel */
+/* Time Picker */
 .time-picker-wrapper{position:relative;display:inline-block;width:100%;}
 .time-picker-trigger{font-size:13px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);outline:none;width:100%;cursor:pointer;font-family:var(--font);}
 .time-picker-trigger:focus{border-color:var(--border2);}
-.time-picker-modal{position:absolute;top:100%;left:0;z-index:1000;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:none;width:140px;}
+.time-picker-modal{position:absolute;top:calc(100% + 4px);left:0;z-index:1000;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);display:none;width:148px;}
 .time-picker-modal.open{display:block;}
-.time-picker-content{display:flex;gap:8px;align-items:center;justify-content:center;}
-.time-picker-column{width:50px;height:150px;overflow:hidden;position:relative;border:1px solid var(--border);border-radius:4px;background:var(--surface2);}
-.time-picker-scroller{display:flex;flex-direction:column;align-items:center;padding:50px 0;cursor:grab;}
-.time-picker-scroller.grabbing{cursor:grabbing;}
-.time-picker-item{height:30px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:var(--text3);transition:color 0.1s;}
-.time-picker-item.active{color:var(--text);font-size:16px;font-weight:600;}
-.time-picker-center{position:absolute;top:50%;left:0;right:0;height:30px;border-top:1px solid var(--accent);border-bottom:1px solid var(--accent);pointer-events:none;transform:translateY(-50%);}
+.time-picker-content{display:flex;gap:6px;align-items:flex-start;}
+.time-picker-sep{font-size:16px;font-weight:600;color:var(--text);padding-top:6px;}
+.tp-col{width:60px;height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;}
+.tp-col::-webkit-scrollbar{width:4px;}
+.tp-col::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+.tp-btn{width:100%;padding:5px 0;border:none;border-radius:6px;background:transparent;font-size:13px;font-family:var(--font);color:var(--text2);cursor:pointer;text-align:center;transition:all .1s;flex-shrink:0;}
+.tp-btn:hover{background:var(--surface2);color:var(--text);}
+.tp-btn.selected{background:var(--accent);color:var(--accent-text);font-weight:600;}
+.tp-label{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);text-align:center;padding:2px 0 4px;}
 
 /* Due/Overdue alert modal */
 .due-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:120;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
@@ -875,193 +877,140 @@ function dueExtend(id){
 
 function v(id){ return document.getElementById(id)?.value.trim() || ''; }
 
-// ── Time Picker Scroll Wheel ──────────────────────────────────────────────────
+// ── Time Picker ───────────────────────────────────────────────────────────────
 function createTimePicker(inputId){
   const input = document.getElementById(inputId);
   const wrapper = document.createElement('div');
   wrapper.className = 'time-picker-wrapper';
-  wrapper.style.width = '100%';
 
   const trigger = document.createElement('input');
   trigger.type = 'text';
   trigger.className = 'time-picker-trigger';
-  trigger.placeholder = input.placeholder;
+  trigger.placeholder = input.placeholder || 'HH:MM';
+  trigger.readOnly = true;
   trigger.value = input.value || '';
-  trigger.readOnly = false;
 
   const modal = document.createElement('div');
   modal.className = 'time-picker-modal';
 
-  const hourScroller = createScrollerColumn('hours');
-  const minScroller = createScrollerColumn('minutes');
+  const hCol = document.createElement('div');
+  hCol.className = 'tp-col';
+  hCol.id = inputId + '-hcol';
 
-  modal.innerHTML = `<div class="time-picker-content">
-    <div class="time-picker-column" id="${inputId}-hours-col">
-      <div class="time-picker-center"></div>
-      <div class="time-picker-scroller" id="${inputId}-hours-scroller"></div>
-    </div>
-    <span style="font-size:16px;font-weight:600;color:var(--text);">:</span>
-    <div class="time-picker-column" id="${inputId}-mins-col">
-      <div class="time-picker-center"></div>
-      <div class="time-picker-scroller" id="${inputId}-mins-scroller"></div>
-    </div>
-  </div>`;
+  const mCol = document.createElement('div');
+  mCol.className = 'tp-col';
+  mCol.id = inputId + '-mcol';
+
+  const hLabel = document.createElement('div');
+  hLabel.className = 'tp-label';
+  hLabel.textContent = 'Hour';
+
+  const mLabel = document.createElement('div');
+  mLabel.className = 'tp-label';
+  mLabel.textContent = 'Min';
+
+  const hWrap = document.createElement('div');
+  hWrap.style.cssText = 'display:flex;flex-direction:column;flex:1;';
+  hWrap.appendChild(hLabel);
+  hWrap.appendChild(hCol);
+
+  const mWrap = document.createElement('div');
+  mWrap.style.cssText = 'display:flex;flex-direction:column;flex:1;';
+  mWrap.appendChild(mLabel);
+  mWrap.appendChild(mCol);
+
+  const sep = document.createElement('div');
+  sep.className = 'time-picker-sep';
+  sep.textContent = ':';
+
+  const content = document.createElement('div');
+  content.className = 'time-picker-content';
+  content.appendChild(hWrap);
+  content.appendChild(sep);
+  content.appendChild(mWrap);
+  modal.appendChild(content);
+
+  // Populate hour buttons
+  for(let h=0;h<24;h++){
+    const btn = document.createElement('button');
+    btn.className = 'tp-btn';
+    btn.textContent = String(h).padStart(2,'0');
+    btn.dataset.val = String(h).padStart(2,'0');
+    btn.addEventListener('click', ()=>{
+      hCol.querySelectorAll('.tp-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      updatePickerInput(inputId);
+    });
+    hCol.appendChild(btn);
+  }
+
+  // Populate minute buttons
+  for(let m=0;m<60;m+=5){
+    const btn = document.createElement('button');
+    btn.className = 'tp-btn';
+    btn.textContent = String(m).padStart(2,'0');
+    btn.dataset.val = String(m).padStart(2,'0');
+    btn.addEventListener('click', ()=>{
+      mCol.querySelectorAll('.tp-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      updatePickerInput(inputId);
+    });
+    mCol.appendChild(btn);
+  }
 
   wrapper.appendChild(trigger);
   wrapper.appendChild(modal);
 
-  // Populate scrollers
-  const hourScroll = modal.querySelector(`#${inputId}-hours-scroller`);
-  const minScroll = modal.querySelector(`#${inputId}-mins-scroller`);
+  trigger.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    document.querySelectorAll('.time-picker-modal.open').forEach(m=>{ if(m!==modal) m.classList.remove('open'); });
+    modal.classList.toggle('open');
+  });
 
-  for(let h=0;h<24;h++){
-    const item = document.createElement('div');
-    item.className = 'time-picker-item';
-    item.textContent = String(h).padStart(2,'0');
-    hourScroll.appendChild(item);
-  }
-
-  for(let m=0;m<60;m+=5){
-    const item = document.createElement('div');
-    item.className = 'time-picker-item';
-    item.textContent = String(m).padStart(2,'0');
-    minScroll.appendChild(item);
-  }
-
-  // Event listeners
-  trigger.addEventListener('click', ()=>{ modal.classList.toggle('open'); });
   document.addEventListener('click', (e)=>{
     if(!wrapper.contains(e.target)) modal.classList.remove('open');
   });
 
-  // Sync from text input to trigger
   input.addEventListener('change', ()=>{ trigger.value = input.value; syncPickerToValue(inputId, input.value); });
 
-  // Sync from trigger to hidden input
-  trigger.addEventListener('input', ()=>{ input.value = trigger.value; });
-
-  // Setup scroll handlers
-  setupScrollerScroll(inputId, 'hours', hourScroll, 24);
-  setupScrollerScroll(inputId, 'minutes', minScroll, 12);
-
-  // Load initial value
   if(input.value) syncPickerToValue(inputId, input.value);
 
   return wrapper;
 }
 
-function createScrollerColumn(type){
-  return document.createElement('div');
-}
-
-function setupScrollerScroll(inputId, type, scroller, itemCount){
-  let isDragging = false;
-  let startY = 0;
-  let startScroll = 0;
-
-  scroller.addEventListener('mousedown', (e)=>{
-    isDragging = true;
-    startY = e.clientY;
-    startScroll = scroller.scrollTop;
-    scroller.classList.add('grabbing');
-  });
-
-  document.addEventListener('mousemove', (e)=>{
-    if(!isDragging) return;
-    const delta = e.clientY - startY;
-    scroller.scrollTop = startScroll - delta;
-  });
-
-  document.addEventListener('mouseup', ()=>{
-    if(!isDragging) return;
-    isDragging = false;
-    scroller.classList.remove('grabbing');
-    snapToNearest(inputId, type, scroller, itemCount);
-  });
-
-  scroller.addEventListener('wheel', (e)=>{
-    e.preventDefault();
-    scroller.scrollTop += e.deltaY;
-    updateActiveItem(scroller);
-  }, {passive:false});
-
-  scroller.addEventListener('scroll', ()=>{ updateActiveItem(scroller); });
-  scroller.addEventListener('touchmove', ()=>{ updateActiveItem(scroller); }, {passive:true});
-  scroller.addEventListener('touchend', ()=>{ snapToNearest(inputId, type, scroller, itemCount); });
-}
-
-function updateActiveItem(scroller){
-  const items = scroller.querySelectorAll('.time-picker-item');
-  const scrollTop = scroller.scrollTop;
-  const centerY = 75; // middle of 150px height
-
-  items.forEach((item, idx)=>{
-    const itemTop = idx * 30;
-    const itemBottom = itemTop + 30;
-    const itemCenter = itemTop + 15;
-    const dist = Math.abs(centerY - itemCenter);
-
-    if(dist < 20) item.classList.add('active');
-    else item.classList.remove('active');
-  });
-}
-
-function snapToNearest(inputId, type, scroller, itemCount){
-  const items = scroller.querySelectorAll('.time-picker-item');
-  const scrollTop = scroller.scrollTop;
-  const centerY = 75;
-
-  let nearest = 0;
-  let minDist = Infinity;
-
-  items.forEach((item, idx)=>{
-    const itemTop = idx * 30;
-    const itemCenter = itemTop + 15;
-    const dist = Math.abs(centerY - itemCenter);
-    if(dist < minDist){ minDist = dist; nearest = idx; }
-  });
-
-  scroller.scrollTop = nearest * 30;
-  updateActiveItem(scroller);
-  updateTimeInputFromPicker(inputId);
-}
-
-function updateTimeInputFromPicker(inputId){
-  const hoursCol = document.querySelector(`#${inputId}-hours-scroller`);
-  const minsCol = document.querySelector(`#${inputId}-mins-scroller`);
-
-  if(!hoursCol || !minsCol) return;
-
-  const hItems = hoursCol.querySelectorAll('.time-picker-item.active');
-  const mItems = minsCol.querySelectorAll('.time-picker-item.active');
-
-  if(hItems.length && mItems.length){
-    const h = hItems[0].textContent;
-    const m = mItems[0].textContent;
-    const timeStr = `${h}:${m}`;
+function updatePickerInput(inputId){
+  const hCol = document.getElementById(inputId + '-hcol');
+  const mCol = document.getElementById(inputId + '-mcol');
+  if(!hCol || !mCol) return;
+  const h = hCol.querySelector('.tp-btn.selected');
+  const m = mCol.querySelector('.tp-btn.selected');
+  if(h && m){
+    const timeStr = `${h.dataset.val}:${m.dataset.val}`;
     const input = document.getElementById(inputId);
     if(input) input.value = timeStr;
-    const wrapper = document.querySelector(`.time-picker-wrapper:has(#${inputId})`);
-    if(wrapper){
-      const trigger = wrapper.querySelector('.time-picker-trigger');
-      if(trigger) trigger.value = timeStr;
-    }
+    const trigger = hCol.closest('.time-picker-wrapper')?.querySelector('.time-picker-trigger');
+    if(trigger) trigger.value = timeStr;
   }
 }
 
 function syncPickerToValue(inputId, timeStr){
   if(!timeStr || !timeStr.includes(':')) return;
   const [h, m] = timeStr.split(':');
-  const hours = parseInt(h) || 0;
-  const mins = Math.round(parseInt(m) / 5) * 5; // snap to 5-min interval
+  const hVal = String(parseInt(h)||0).padStart(2,'0');
+  const mVal = String(Math.round((parseInt(m)||0)/5)*5).padStart(2,'0');
 
-  const hoursCol = document.querySelector(`#${inputId}-hours-scroller`);
-  const minsCol = document.querySelector(`#${inputId}-mins-scroller`);
+  const hCol = document.getElementById(inputId + '-hcol');
+  const mCol = document.getElementById(inputId + '-mcol');
+  if(!hCol || !mCol) return;
 
-  if(hoursCol) hoursCol.scrollTop = hours * 30;
-  if(minsCol) minsCol.scrollTop = (mins / 5) * 30;
-
-  setTimeout(()=>{ updateActiveItem(hoursCol); updateActiveItem(minsCol); }, 0);
+  hCol.querySelectorAll('.tp-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.val === hVal);
+    if(b.dataset.val === hVal) b.scrollIntoView({block:'nearest'});
+  });
+  mCol.querySelectorAll('.tp-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.val === mVal);
+    if(b.dataset.val === mVal) b.scrollIntoView({block:'nearest'});
+  });
 }
 
 function clearForm(){
