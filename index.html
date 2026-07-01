@@ -253,7 +253,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.1.2</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.1.3</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -630,28 +630,18 @@ window.addEventListener('message', function(ev){
 })();
 
 function initializeTimePickers(){
-  const timeInputs = ['f-time', 'f-time-to'];
-  timeInputs.forEach(id=>{
+  ['f-time', 'f-time-to'].forEach(id=>{
     const input = document.getElementById(id);
     if(!input) return;
-    const parent = input.parentElement;
-    const picker = createTimePicker(id);
-    parent.replaceChild(picker, input);
-    const newInput = document.getElementById(id);
-    if(newInput) newInput.style.display='none';
+    input.parentElement.replaceChild(createTimePicker(id), input);
   });
 }
 
 function initializeEditTimePickers(entryId){
-  const timeInputIds = [`edit-time-${entryId}`, `edit-time-to-${entryId}`];
-  timeInputIds.forEach(id=>{
+  [`edit-time-${entryId}`, `edit-time-to-${entryId}`].forEach(id=>{
     const input = document.getElementById(id);
     if(!input) return;
-    const parent = input.parentElement;
-    const picker = createTimePicker(id);
-    parent.replaceChild(picker, input);
-    const newInput = document.getElementById(id);
-    if(newInput) newInput.style.display='none';
+    input.parentElement.replaceChild(createTimePicker(id), input);
   });
 }
 
@@ -748,7 +738,10 @@ function renderTrash(){
 
 function startEdit(id){
   editingId = id; render();
-  setTimeout(()=>{ const el = document.getElementById('edit-name-'+id); if(el) el.focus(); },50);
+  setTimeout(()=>{
+    initializeEditTimePickers(id);
+    const el = document.getElementById('edit-name-'+id); if(el) el.focus();
+  }, 50);
 }
 
 function cancelEdit(){ editingId = null; render(); }
@@ -973,6 +966,14 @@ function createTimePicker(inputId){
 
   input.addEventListener('change', ()=>{ trigger.value = input.value; syncPickerToValue(inputId, input.value); });
 
+  // Auto-insert colon after 2 digits
+  trigger.addEventListener('input', ()=>{
+    let val = trigger.value.replace(/[^\d:]/g,'');
+    if(val.length === 2 && !val.includes(':')) val = val + ':';
+    if(val.length > 5) val = val.slice(0,5);
+    trigger.value = val;
+  });
+
   trigger.addEventListener('blur', ()=>{
     const val = trigger.value.trim();
     if(/^\d{1,2}:\d{2}$/.test(val)){
@@ -987,6 +988,10 @@ function createTimePicker(inputId){
       input.value = '';
     }
   });
+
+  // Keep original input hidden inside wrapper so getElementById(inputId) still works
+  input.style.display = 'none';
+  wrapper.appendChild(input);
 
   if(input.value) syncPickerToValue(inputId, input.value);
 
@@ -1692,7 +1697,7 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.1.2', date: 'July 2026', latest: true,
+    version: 'v1.1.3', date: 'July 2026', latest: true,
     items: [
       'Trash Can: deleted entries stored for 5 days, restorable from Settings › Trash',
       'Search: real-time search by name or deadline in filter bar, works with type filters across all views',
