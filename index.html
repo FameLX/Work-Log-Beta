@@ -260,6 +260,15 @@ svg.icon.sm{width:13px;height:13px;}
 .repeat-weekday-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
 .repeat-weekday-btn.active{background:var(--accent);color:var(--accent-text);border-color:var(--accent);}
 
+/* Repeat calendar preview */
+.rp-cal-day{padding:4px 2px;border-radius:4px;font-size:11px;color:var(--text3);}
+.rp-cal-day.this-month{color:var(--text);}
+.rp-cal-day.selected{background:var(--accent);color:var(--accent-text);border-radius:50%;font-weight:600;cursor:pointer;}
+.rp-cal-day.start-date{background:var(--success-bg);color:var(--success);border-radius:50%;font-weight:600;}
+.rp-cal-day.custom-toggle{cursor:pointer;}
+.rp-cal-day.custom-toggle:hover{background:var(--surface2);}
+.rp-cal-hdr{font-size:10px;font-weight:600;color:var(--text3);padding:2px 0;text-align:center;}
+
 /* Repeat confirm modal */
 .repeat-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 .repeat-modal-overlay.open{opacity:1;pointer-events:all;}
@@ -285,7 +294,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.1.4</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.1.5</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -346,55 +355,65 @@ svg.icon.sm{width:13px;height:13px;}
         <div class="repeat-options" id="repeat-options" style="display:none;">
           <div>
             <label class="field-label">End date <span style="color:var(--danger);">*</span></label>
-            <input type="date" id="f-repeat-end"/>
+            <input type="date" id="f-repeat-end" oninput="refreshRepeatPreview()"/>
           </div>
           <div>
             <label class="field-label">Repeat every</label>
             <div class="repeat-type-btns">
-              <button class="repeat-type-btn active" data-rtype="daily" onclick="setRepeatType('daily')">Daily</button>
-              <button class="repeat-type-btn" data-rtype="weekly" onclick="setRepeatType('weekly')">Weekly</button>
-              <button class="repeat-type-btn" data-rtype="monthly" onclick="setRepeatType('monthly')">Monthly</button>
-              <button class="repeat-type-btn" data-rtype="yearly" onclick="setRepeatType('yearly')">Yearly</button>
-              <button class="repeat-type-btn" data-rtype="custom" onclick="setRepeatType('custom')">Custom</button>
+              <button type="button" class="repeat-type-btn active" data-rtype="daily" onclick="setRepeatType('daily')">Daily</button>
+              <button type="button" class="repeat-type-btn" data-rtype="weekly" onclick="setRepeatType('weekly')">Weekly</button>
+              <button type="button" class="repeat-type-btn" data-rtype="monthly" onclick="setRepeatType('monthly')">Monthly</button>
+              <button type="button" class="repeat-type-btn" data-rtype="yearly" onclick="setRepeatType('yearly')">Yearly</button>
+              <button type="button" class="repeat-type-btn" data-rtype="custom" onclick="setRepeatType('custom')">Custom</button>
             </div>
           </div>
-          <!-- Daily: every N days -->
+          <!-- Daily -->
           <div id="repeat-daily-opts">
             <label class="field-label">Every</label>
             <div style="display:flex;align-items:center;gap:8px;">
-              <input type="number" id="f-repeat-days" value="1" min="1" max="365" style="width:70px;"/>
+              <input type="number" id="f-repeat-days" value="1" min="1" max="365" style="width:70px;" oninput="refreshRepeatPreview()"/>
               <span style="font-size:13px;color:var(--text2);">day(s)</span>
             </div>
           </div>
-          <!-- Weekly: pick weekdays -->
+          <!-- Weekly -->
           <div id="repeat-weekly-opts" style="display:none;">
             <label class="field-label">On these days</label>
             <div class="repeat-weekdays">
-              <button class="repeat-weekday-btn" data-day="0" onclick="toggleWeekday(this)">Su</button>
-              <button class="repeat-weekday-btn" data-day="1" onclick="toggleWeekday(this)">Mo</button>
-              <button class="repeat-weekday-btn" data-day="2" onclick="toggleWeekday(this)">Tu</button>
-              <button class="repeat-weekday-btn" data-day="3" onclick="toggleWeekday(this)">We</button>
-              <button class="repeat-weekday-btn" data-day="4" onclick="toggleWeekday(this)">Th</button>
-              <button class="repeat-weekday-btn" data-day="5" onclick="toggleWeekday(this)">Fr</button>
-              <button class="repeat-weekday-btn" data-day="6" onclick="toggleWeekday(this)">Sa</button>
+              <button type="button" class="repeat-weekday-btn" data-day="0" onclick="toggleWeekday(this)">Su</button>
+              <button type="button" class="repeat-weekday-btn" data-day="1" onclick="toggleWeekday(this)">Mo</button>
+              <button type="button" class="repeat-weekday-btn" data-day="2" onclick="toggleWeekday(this)">Tu</button>
+              <button type="button" class="repeat-weekday-btn" data-day="3" onclick="toggleWeekday(this)">We</button>
+              <button type="button" class="repeat-weekday-btn" data-day="4" onclick="toggleWeekday(this)">Th</button>
+              <button type="button" class="repeat-weekday-btn" data-day="5" onclick="toggleWeekday(this)">Fr</button>
+              <button type="button" class="repeat-weekday-btn" data-day="6" onclick="toggleWeekday(this)">Sa</button>
             </div>
           </div>
-          <!-- Monthly: auto-detected from start date -->
+          <!-- Monthly -->
           <div id="repeat-monthly-opts" style="display:none;">
             <label class="field-label">Monthly pattern</label>
             <div style="display:flex;flex-direction:column;gap:6px;">
               <label style="font-size:13px;display:flex;gap:8px;align-items:center;cursor:pointer;">
-                <input type="radio" name="monthly-type" value="day" id="monthly-day" checked style="accent-color:var(--accent);"/> Same day of month
+                <input type="radio" name="monthly-type" value="day" id="monthly-day" checked style="accent-color:var(--accent);" onchange="refreshRepeatPreview()"/> Same day of month
               </label>
               <label style="font-size:13px;display:flex;gap:8px;align-items:center;cursor:pointer;">
-                <input type="radio" name="monthly-type" value="weekday" id="monthly-weekday" style="accent-color:var(--accent);"/> Same weekday of month
+                <input type="radio" name="monthly-type" value="weekday" id="monthly-weekday" style="accent-color:var(--accent);" onchange="refreshRepeatPreview()"/> Same weekday of month
               </label>
               <span id="monthly-pattern-hint" style="font-size:11px;color:var(--text3);"></span>
             </div>
           </div>
-          <!-- Custom: info text -->
+          <!-- Custom -->
           <div id="repeat-custom-opts" style="display:none;">
-            <p style="font-size:12px;color:var(--text2);">Specific dates will be shown in the preview. Uncheck any you don't want.</p>
+            <p style="font-size:12px;color:var(--text2);">Click dates on the calendar to toggle them.</p>
+          </div>
+          <!-- Calendar preview -->
+          <div id="repeat-calendar-wrap" style="display:none;margin-top:4px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <button type="button" class="btn btn-sm" style="padding:2px 8px;" onclick="repeatCalNav(-1)">‹</button>
+              <span id="repeat-cal-title" style="font-size:12px;font-weight:500;"></span>
+              <button type="button" class="btn btn-sm" style="padding:2px 8px;" onclick="repeatCalNav(1)">›</button>
+            </div>
+            <div id="repeat-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;font-size:11px;"></div>
+            <div id="repeat-cal-count" style="font-size:11px;color:var(--text3);margin-top:6px;text-align:center;"></div>
           </div>
         </div>
       </div>
@@ -1244,20 +1263,86 @@ let pendingRepeatEntries = [];
 function toggleRepeatUI(){
   const checked = document.getElementById('f-repeat').checked;
   document.getElementById('repeat-options').style.display = checked ? 'flex' : 'none';
-  if(checked) updateMonthlyHint();
+  if(checked){ updateMonthlyHint(); refreshRepeatPreview(); }
+  else{ document.getElementById('repeat-calendar-wrap').style.display='none'; }
 }
 
 function setRepeatType(type){
   repeatType = type;
   document.querySelectorAll('.repeat-type-btn').forEach(b=>b.classList.toggle('active', b.dataset.rtype===type));
-  document.getElementById('repeat-daily-opts').style.display  = type==='daily'   ? 'block' : 'none';
-  document.getElementById('repeat-weekly-opts').style.display = type==='weekly'  ? 'block' : 'none';
-  document.getElementById('repeat-monthly-opts').style.display= type==='monthly' ? 'block' : 'none';
-  document.getElementById('repeat-custom-opts').style.display = type==='custom'  ? 'block' : 'none';
+  document.getElementById('repeat-daily-opts').style.display   = type==='daily'   ? 'block' : 'none';
+  document.getElementById('repeat-weekly-opts').style.display  = type==='weekly'  ? 'block' : 'none';
+  document.getElementById('repeat-monthly-opts').style.display = type==='monthly' ? 'block' : 'none';
+  document.getElementById('repeat-custom-opts').style.display  = type==='custom'  ? 'block' : 'none';
   if(type==='monthly') updateMonthlyHint();
+  customSelectedDates.clear();
+  refreshRepeatPreview();
 }
 
-function toggleWeekday(btn){ btn.classList.toggle('active'); }
+function toggleWeekday(btn){ btn.classList.toggle('active'); refreshRepeatPreview(); }
+
+// Calendar preview state
+let repeatCalYear = 0, repeatCalMonth = 0;
+let customSelectedDates = new Set();
+
+function refreshRepeatPreview(){
+  const startVal = document.getElementById('f-deadline')?.value || document.getElementById('f-deadline-task')?.value;
+  const endVal = document.getElementById('f-repeat-end')?.value;
+  const wrap = document.getElementById('repeat-calendar-wrap');
+  if(!startVal || !endVal){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  // Set calendar to start month if not yet set
+  const startD = new Date(startVal+'T00:00:00');
+  if(repeatCalYear===0){ repeatCalYear=startD.getFullYear(); repeatCalMonth=startD.getMonth(); }
+  renderRepeatCal(startVal, endVal);
+}
+
+function repeatCalNav(dir){
+  repeatCalMonth += dir;
+  if(repeatCalMonth>11){ repeatCalMonth=0; repeatCalYear++; }
+  if(repeatCalMonth<0){ repeatCalMonth=11; repeatCalYear--; }
+  const startVal = document.getElementById('f-deadline')?.value || document.getElementById('f-deadline-task')?.value;
+  const endVal = document.getElementById('f-repeat-end')?.value;
+  renderRepeatCal(startVal, endVal);
+}
+
+function renderRepeatCal(startVal, endVal){
+  const generatedDates = new Set(generateRepeatDates(startVal) || []);
+  const startD = new Date(startVal+'T00:00:00');
+  const title = document.getElementById('repeat-cal-title');
+  const grid = document.getElementById('repeat-cal-grid');
+  const countEl = document.getElementById('repeat-cal-count');
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  title.textContent = `${months[repeatCalMonth]} ${repeatCalYear}`;
+
+  const firstDay = new Date(repeatCalYear, repeatCalMonth, 1).getDay();
+  const daysInMonth = new Date(repeatCalYear, repeatCalMonth+1, 0).getDate();
+  const hdrs = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+  let html = hdrs.map(h=>`<div class="rp-cal-hdr">${h}</div>`).join('');
+  for(let i=0;i<firstDay;i++) html+=`<div></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const dateStr = `${repeatCalYear}-${String(repeatCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isStart = dateStr === startVal;
+    const isSelected = repeatType==='custom' ? customSelectedDates.has(dateStr) : generatedDates.has(dateStr);
+    const isCustom = repeatType==='custom';
+    const cls = ['rp-cal-day','this-month', isStart?'start-date':'', isSelected&&!isStart?'selected':'', isCustom&&!isStart?'custom-toggle':''].filter(Boolean).join(' ');
+    const click = isCustom&&!isStart ? `onclick="toggleCustomDate('${dateStr}')"` : '';
+    html+=`<div class="${cls}" ${click}>${d}</div>`;
+  }
+  grid.innerHTML = html;
+
+  const totalSelected = repeatType==='custom' ? customSelectedDates.size : generatedDates.size;
+  countEl.textContent = totalSelected ? `${totalSelected} date${totalSelected===1?'':'s'} selected` : 'No dates yet';
+}
+
+function toggleCustomDate(dateStr){
+  if(customSelectedDates.has(dateStr)) customSelectedDates.delete(dateStr);
+  else customSelectedDates.add(dateStr);
+  const startVal = document.getElementById('f-deadline')?.value || document.getElementById('f-deadline-task')?.value;
+  const endVal = document.getElementById('f-repeat-end')?.value;
+  renderRepeatCal(startVal, endVal);
+}
 
 function updateMonthlyHint(){
   const startDate = document.getElementById('f-deadline')?.value || document.getElementById('f-deadline-task')?.value;
@@ -1325,9 +1410,7 @@ function generateRepeatDates(startDate){
     }
 
   } else if(repeatType === 'custom'){
-    // Show all dates between start+1 and end — user picks in modal
-    const cur = new Date(start); cur.setDate(cur.getDate()+1);
-    while(cur <= end){ addDate(cur); cur.setDate(cur.getDate()+1); }
+    return [...customSelectedDates].sort();
   }
 
   return dates;
@@ -1382,6 +1465,8 @@ function clearForm(){
   document.getElementById('f-repeat-end') && (document.getElementById('f-repeat-end').value='');
   document.getElementById('f-repeat-days') && (document.getElementById('f-repeat-days').value='1');
   document.querySelectorAll('.repeat-weekday-btn.active').forEach(b=>b.classList.remove('active'));
+  customSelectedDates.clear();
+  repeatCalYear=0; repeatCalMonth=0;
   setRepeatType('daily');
 }
 
@@ -2066,7 +2151,7 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.1.4', date: 'July 2026', latest: true,
+    version: 'v1.1.5', date: 'July 2026', latest: true,
     items: [
       'Trash Can: deleted entries stored for 5 days, restorable from Settings › Trash',
       'Search: real-time search by name or deadline in filter bar, works with type filters across all views',
