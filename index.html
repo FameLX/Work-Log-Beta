@@ -242,7 +242,7 @@ svg.icon.sm{width:13px;height:13px;}
 
 /* Multi-select */
 .select-mode .entry-card{cursor:pointer;padding-left:44px;position:relative;}
-.entry-checkbox{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;accent-color:var(--accent);cursor:pointer;}
+.entry-checkbox{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;align-self:center;}
 .bulk-bar{display:none;align-items:center;gap:10px;padding:10px 24px;background:var(--accent);color:var(--accent-text);font-size:13px;}
 .bulk-bar.visible{display:flex;}
 .bulk-bar .btn{font-size:12px;padding:4px 12px;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:var(--accent-text);}
@@ -295,7 +295,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.1</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.2</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -1630,7 +1630,6 @@ function entryHTML(e, isArchived=false){
 
   return `
     <div class="entry-card" id="card-${e.id}"${colorStyle}${cardClick}>
-      ${selectCb}
       <div class="entry-top">
         <div class="entry-body">
           <div class="entry-name">${highlight(e.name, searchQuery)}</div>
@@ -1654,6 +1653,7 @@ function entryHTML(e, isArchived=false){
             <button class="icon-btn" title="Archive entry" onclick="archiveEntry(${e.id})" style="color:var(--text3);">${archiveIcon()}</button>
             <button class="icon-btn del" title="Delete permanently" onclick="deleteEntry(${e.id})">${trashIcon()}</button>
           `}
+          ${selectCb}
         </div>
       </div>
     </div>`;
@@ -2177,7 +2177,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.2.1', date: 'July 2026', latest: true,
+    version: 'v1.2.2', date: 'July 2026', latest: true,
+    items: [
+      'Fix multi-select checkbox overlapping entry text — moved to end of card actions row'
+    ]
+  },
+  {
+    version: 'v1.2.1', date: 'July 2026', latest: false,
     items: [
       'Fix export: Date Created/Time Created/Updated columns were blank — now falls back to legacy created/updated fields',
       'Fix export: ID column showed scientific notation in Excel — now forced to text'
