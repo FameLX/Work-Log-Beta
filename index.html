@@ -126,7 +126,8 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 /* GCal modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 .modal-overlay.open{opacity:1;pointer-events:auto;}
-.modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:440px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,.15);}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:440px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:90vh;display:flex;flex-direction:column;}
+.changelog-body{flex:1;overflow-y:auto;margin:12px 0;padding-right:4px;}
 .modal h2{font-size:16px;font-weight:500;margin-bottom:6px;}
 .modal p{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;}
 .modal-steps{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.8;counter-reset:step;}
