@@ -295,7 +295,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.6</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.7</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -2134,39 +2134,12 @@ function previewUIColors(){
   if(surface) document.documentElement.style.setProperty('--surface', surface);
 }
 
-function hexLuminance(hex){
-  const h = hex.replace('#','');
-  const r = parseInt(h.slice(0,2),16)/255;
-  const g = parseInt(h.slice(2,4),16)/255;
-  const b = parseInt(h.slice(4,6),16)/255;
-  const lin = v => v <= 0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
-  return 0.2126*lin(r) + 0.7152*lin(g) + 0.0722*lin(b);
-}
-
 function applyUIColors(){
   if(!uiColors || !Object.keys(uiColors).length) return;
   const root = document.documentElement;
   if(uiColors.accent) root.style.setProperty('--text', uiColors.accent);
   if(uiColors.bg) root.style.setProperty('--bg', uiColors.bg);
-  if(uiColors.surface){
-    root.style.setProperty('--surface', uiColors.surface);
-    const lum = hexLuminance(uiColors.surface);
-    if(lum < 0.18){
-      // dark surface → light text
-      root.style.setProperty('--text', '#F0EFEA');
-      root.style.setProperty('--text2', '#B8B5AD');
-      root.style.setProperty('--text3', '#7A776F');
-      root.style.setProperty('--border', 'rgba(255,255,255,0.12)');
-      root.style.setProperty('--border2', 'rgba(255,255,255,0.25)');
-    } else {
-      // light surface → respect accent or default dark text
-      root.style.setProperty('--text', uiColors.accent || '#1A1917');
-      root.style.removeProperty('--text2');
-      root.style.removeProperty('--text3');
-      root.style.removeProperty('--border');
-      root.style.removeProperty('--border2');
-    }
-  }
+  if(uiColors.surface) root.style.setProperty('--surface', uiColors.surface);
 }
 
 function resetUIColors(){
@@ -2239,7 +2212,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.2.6', date: 'July 2026', latest: true,
+    version: 'v1.2.7', date: 'July 2026', latest: true,
+    items: [
+      'Fix: choosing a dark Surface color always forced text to white, ignoring the accent/text color you picked — removed the auto-contrast override so your chosen text color always applies'
+    ]
+  },
+  {
+    version: 'v1.2.6', date: 'July 2026', latest: false,
     items: [
       'Fix: time picker did not clear after adding an entry or clicking Clear form — the visible time trigger and selected hour/minute buttons kept showing the old time even though the hidden field was cleared'
     ]
