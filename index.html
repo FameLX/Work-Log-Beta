@@ -2175,18 +2175,61 @@ function saveSettings(){
 const CHANGELOG = [
   {
     version: 'v1.2.0', date: 'July 2026', latest: true,
-    notes: 'Multi-select, repeat entries (daily/weekly/monthly/yearly/custom), GCal fixes'
+    items: [
+      'Multi-select mode: bulk archive and bulk delete with checkbox column',
+      'Repeat entries: daily (every N days), weekly (pick days), monthly (same day or weekday), yearly, custom date picker',
+      'Monthly repeat calendar preview with navigation and date toggles',
+      'Fixed TDZ crash from let/const ordering in init',
+      'Fixed monthly repeat skipping the starting month',
+      'Fixed timezone bug in repeat date formatting',
+      'Time picker UX: scroll-wheel clickable buttons with manual typing and auto-colon',
+      'GCal duplicate prevention: PATCH if event exists, POST if new',
+      'Silent sync mode suppresses per-entry toasts',
+      'Added error surfacing in render and time picker init for diagnostics'
+    ]
   },
   {
     version: 'v1.1.9', date: 'July 2026', latest: false,
     items: [
-      'Trash Can: deleted entries stored for 5 days, restorable from Settings › Trash',
-      'Search: real-time search by name or deadline in filter bar, works with type filters across all views',
-      'Notification fix: Tasks Needing Attention now correctly shows In Progress / Last Day / Overdue for multi-day events',
-      'Versioned changelog with per-version ← → navigation',
-      'Multi-day event status badges: In Progress (green), Last Chance (red), soon (yellow)',
-      'GCal colour preview swatch in Task Types settings',
-      'Updated/Created timestamps in exports; Z replaced with UTC',
+      'Fix TDZ crash - init() now runs after all let/const state declarations (Chrome strict-mode fix)',
+      'Add error surfacing in render and time picker init to diagnose blank entries'
+    ]
+  },
+  {
+    version: 'v1.1.8', date: 'July 2026', latest: false,
+    items: [
+      'Diagnostic error messages: render() and initializeTimePickers() surface exceptions in UI and console'
+    ]
+  },
+  {
+    version: 'v1.1.7', date: 'July 2026', latest: false,
+    items: [
+      'Fix replaceChild crash in time picker init, fix GCAL_COLOR_OPTIONS TDZ error'
+    ]
+  },
+  {
+    version: 'v1.1.6', date: 'July 2026', latest: false,
+    items: [
+      'Fix JS crash from null element access, fix double style attribute on entry cards'
+    ]
+  },
+  {
+    version: 'v1.1.5', date: 'June 2026', latest: false,
+    items: [
+      'Multi-day event support with deadlineEnd field',
+      'Repeat entry UI framework (buttons, calendar preview, modal)',
+      'Multi-select framework (checkbox, bulk bar, SelectMode state)'
+    ]
+  },
+  {
+    version: 'v1.1.0', date: 'June 2026', latest: false,
+    items: [
+      'Custom scroll-wheel time picker (replaces native input type=time)',
+      'Time picker auto-colon insertion and validation',
+      'Restructured project folders: Project/Work Log/ (production), Project/Work Log Dev/ (development)',
+      'Sync to index.html before every push (beta or production)',
+      'GCal 24-color palette mapping with swatches in settings',
+      'Added timeTo field for event end times'
     ]
   },
   {
