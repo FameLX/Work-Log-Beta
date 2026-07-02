@@ -35,6 +35,7 @@ a{color:inherit;}
 .gcal-pill{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:border-color .15s;}
 .gcal-pill:hover{border-color:var(--border2);}
 .gcal-pill.connected{background:var(--success-bg);color:var(--success);border-color:rgba(45,106,79,.25);}
+.gcal-pill.expired{background:var(--danger-bg);color:var(--danger);border-color:rgba(153,27,27,.25);}
 .gcal-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.7;}
 
 /* Sidebar */
@@ -295,7 +296,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.3.1</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.4.0</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -554,7 +555,7 @@ svg.icon.sm{width:13px;height:13px;}
   <div class="modal">
     <h2 id="gcal-modal-title">Connect Google Calendar</h2>
     <div id="gcal-connected-section" style="display:none;">
-      <p style="font-size:13px;color:var(--success);background:var(--success-bg);padding:8px 12px;border-radius:8px;margin-bottom:16px;line-height:1.6;"><strong>✓ Google Calendar is connected.</strong> New entries with a deadline sync automatically.</p>
+      <p id="gcal-connected-status" style="font-size:13px;color:var(--success);background:var(--success-bg);padding:8px 12px;border-radius:8px;margin-bottom:16px;line-height:1.6;"><strong>✓ Google Calendar is connected.</strong> New entries with a deadline sync automatically.</p>
       <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">If sync stops working (the access token expires after about an hour), click <strong>Reconnect</strong> to sign in again — or <strong>Disconnect</strong> to stop syncing entirely.</p>
     </div>
     <div id="gcal-setup-section">
@@ -1581,7 +1582,7 @@ function render(){
   </button>` : '';
   fb.innerHTML = types.map(t=>`<button class="filter-chip${filterType===t?' active':''}" onclick="setFilter('${esc(t)}')">${esc(t)}</button>`).join('') + syncAllBtn;
   const searchRow = document.getElementById('search-bar-row');
-  if(searchRow) searchRow.innerHTML = `<input class="search-input" type="text" id="search-input" placeholder="Search…" value="${esc(searchQuery)}" oninput="setSearch(this.value)"/>`;
+  if(searchRow) searchRow.innerHTML = `<input class="search-input" type="text" id="search-input" placeholder="Search name, date, or time…" value="${esc(searchQuery)}" oninput="setSearch(this.value)"/>`;
 
   // Update archive count badge
   const archiveBadge = document.getElementById('archive-count');
@@ -1743,10 +1744,43 @@ function setSearch(q){
   requestAnimationFrame(()=>{ const el=document.getElementById('search-input'); if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);} });
 }
 
+const SEARCH_MONTH_NAMES = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+const SEARCH_MONTH_ABBR  = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+
+// Build a blob of every human-readable way this date could be written, so a
+// search for "July 2", "02/07", "2/7/2026", or the raw "2026-07-02" all match.
+function dateSearchBlob(dateStr){
+  if(!dateStr) return '';
+  const [y,m,day] = dateStr.split('-');
+  const mi = (+m) - 1;
+  const dayNum = parseInt(day,10);
+  const mon = +m;
+  return [
+    dateStr,
+    `${day}/${m}/${y}`, `${dayNum}/${mon}/${y}`,
+    SEARCH_MONTH_NAMES[mi], SEARCH_MONTH_ABBR[mi],
+    `${SEARCH_MONTH_ABBR[mi]} ${dayNum}`, `${SEARCH_MONTH_NAMES[mi]} ${dayNum}`,
+    `${dayNum} ${SEARCH_MONTH_ABBR[mi]}`, `${dayNum} ${SEARCH_MONTH_NAMES[mi]}`,
+    y
+  ].join(' ');
+}
+
+// Build a blob of both 24h ("13:30") and 12h ("1:30PM" / "1:30 PM") forms.
+function timeSearchBlob(timeStr){
+  if(!timeStr) return '';
+  const t12 = fmtTime(timeStr);
+  return `${timeStr} ${t12} ${t12.replace(/(AM|PM)/,' $1')}`.toLowerCase();
+}
+
 function matchesSearch(e, q){
   if(!q) return true;
-  const lq = q.toLowerCase();
-  return e.name.toLowerCase().includes(lq) || (e.deadline||'').includes(lq) || (e.deadlineEnd||'').includes(lq);
+  const lq = q.toLowerCase().trim();
+  if(e.name.toLowerCase().includes(lq)) return true;
+  const dateBlob = (dateSearchBlob(e.deadline) + ' ' + dateSearchBlob(e.deadlineEnd)).toLowerCase();
+  if(dateBlob.includes(lq)) return true;
+  const timeBlob = timeSearchBlob(e.time) + ' ' + timeSearchBlob(e.timeTo);
+  if(timeBlob.includes(lq)) return true;
+  return false;
 }
 
 function highlight(text, query){
@@ -1858,6 +1892,25 @@ function toast(msg,dur=2400){
 }
 
 // ── Google Calendar ────────────────────────────────────────────────────────
+// Google's OAuth implicit-flow access token expires after ~1 hour with no
+// refresh token, so calls silently start failing (401) while the pill still
+// shows "connected". This flags that state visibly instead of failing silent.
+let gcalExpired = false;
+function checkGCalAuthExpired(res){
+  if(res && res.status === 401 && !gcalExpired){
+    gcalExpired = true;
+    const pill = document.getElementById('gcal-pill');
+    pill.classList.remove('connected');
+    pill.classList.add('expired');
+    document.getElementById('gcal-pill-text').textContent = 'Reconnect Google Calendar';
+    toast('Google Calendar session expired — click the pill to reconnect.', 5000);
+  }
+}
+function clearGCalExpired(){
+  gcalExpired = false;
+  document.getElementById('gcal-pill').classList.remove('expired');
+}
+
 function openGCalModal(){
   const connected = !!gcalToken;
   document.getElementById('gcal-modal-title').textContent = connected ? 'Google Calendar' : 'Connect Google Calendar';
@@ -1865,6 +1918,14 @@ function openGCalModal(){
   document.getElementById('gcal-setup-section').style.display = connected ? 'none' : 'block';
   document.getElementById('gcal-token-section').style.display = 'none';
   if(connected){
+    const statusEl = document.getElementById('gcal-connected-status');
+    if(gcalExpired){
+      statusEl.style.color = 'var(--danger)'; statusEl.style.background = 'var(--danger-bg)';
+      statusEl.innerHTML = '<strong>⚠ Your session has expired.</strong> Click Reconnect below to sign in again.';
+    } else {
+      statusEl.style.color = 'var(--success)'; statusEl.style.background = 'var(--success-bg)';
+      statusEl.innerHTML = '<strong>✓ Google Calendar is connected.</strong> New entries with a deadline sync automatically.';
+    }
     document.getElementById('gcal-modal-actions').innerHTML = `<button class="btn" onclick="closeGCalModal()">Close</button><button class="btn" onclick="gcalDisconnect()" style="color:var(--danger);">Disconnect</button><button class="btn btn-primary" onclick="gcalAuthorise()">Reconnect</button>`;
   } else {
     document.getElementById('gcal-client-id').value = gcalClientId;
@@ -1877,6 +1938,7 @@ function closeGCalModal(){ document.getElementById('gcal-modal').classList.remov
 function gcalDisconnect(){
   gcalToken = null;
   localStorage.removeItem('wl2_gcal_token');
+  clearGCalExpired();
   document.getElementById('gcal-pill').classList.remove('connected');
   document.getElementById('gcal-pill-text').textContent = 'Connect Google Calendar';
   closeGCalModal();
@@ -1911,6 +1973,7 @@ function gcalSaveToken(){
 // automatic postMessage capture and by the manual-paste fallback.
 function gcalApplyToken(t){
   gcalToken=t; localStorage.setItem('wl2_gcal_token',t);
+  clearGCalExpired();
   document.getElementById('gcal-pill').classList.add('connected');
   document.getElementById('gcal-pill-text').textContent='Calendar connected';
   closeGCalModal(); render();
@@ -1982,6 +2045,7 @@ async function pushToGCal(entry, silent=false){
       method:'POST', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
       body:JSON.stringify(buildGCalEvent(entry))
     });
+    checkGCalAuthExpired(res);
     if(res.ok){
       const created = await res.json();
       entry.gcalEventId = created.id;
@@ -2002,6 +2066,7 @@ async function patchGCal(entry, silent=false){
       {method:'PATCH', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
        body:JSON.stringify(buildGCalEvent(entry))}
     );
+    checkGCalAuthExpired(res);
     if(res.ok){ if(!silent) toast(`Calendar event updated for "${entry.name}".`); }
     else if(res.status===404){
       // Event was deleted from GCal manually — clear stale ID and create fresh
@@ -2020,6 +2085,7 @@ async function deleteFromGCal(entry, silent=false){
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${entry.gcalEventId}`,
       {method:'DELETE', headers:{Authorization:`Bearer ${gcalToken}`}}
     );
+    checkGCalAuthExpired(res);
     if(!silent){
       if(res.ok||res.status===204) toast(`Calendar event removed for "${entry.name}".`);
       else toast('Calendar delete failed — token may have expired. Remove manually.');
@@ -2046,6 +2112,7 @@ async function pushToGTask(entry, silent=false){
       method:'POST', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
+    checkGCalAuthExpired(res);
     if(res.ok){
       const created = await res.json();
       entry.gcalTaskId = created.id; save();
@@ -2069,6 +2136,7 @@ async function patchGTask(entry, silent=false){
       method:'PATCH', headers:{Authorization:`Bearer ${gcalToken}`,'Content-Type':'application/json'},
       body:JSON.stringify(body)
     });
+    checkGCalAuthExpired(res);
     if(res.ok){ if(!silent) toast(`Task updated for "${entry.name}".`); }
     else{ if(!silent) toast('Task update failed — token may have expired.'); }
   }catch{ if(!silent) toast('Could not reach Google Tasks.'); }
@@ -2080,6 +2148,7 @@ async function deleteFromGTask(entry, silent=false){
     const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${entry.gcalTaskId}`,{
       method:'DELETE', headers:{Authorization:`Bearer ${gcalToken}`}
     });
+    checkGCalAuthExpired(res);
     if(!silent){
       if(res.ok||res.status===204) toast(`Task removed for "${entry.name}".`);
       else toast('Task delete failed — token may have expired. Remove manually.');
@@ -2273,7 +2342,14 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.3.1', date: 'July 2026', latest: true,
+    version: 'v1.4.0', date: 'July 2026', latest: true,
+    items: [
+      'Search now understands dates and times: "July 2", "02/07", "2/7/2026", "13:30", and "1:30 PM" all match — not just the exact stored date format',
+      'Google Calendar: the pill now turns red and says "Reconnect Google Calendar" when your session token expires (after ~1 hour), instead of silently failing every sync in the background'
+    ]
+  },
+  {
+    version: 'v1.3.1', date: 'July 2026', latest: false,
     items: [
       'CRITICAL FIX: bulk delete (v1.2.9) wrote a "trashedAt" field instead of "deletedAt" — this crashed the entire Trash view whenever it contained a bulk-deleted entry, and caused those entries to be silently purged on the next page load. Fixed, plus a one-time migration for any entries already affected.'
     ]
