@@ -126,8 +126,8 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 /* GCal modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 .modal-overlay.open{opacity:1;pointer-events:auto;}
-.modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:440px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,.15);max-height:90vh;display:flex;flex-direction:column;}
-.changelog-body{flex:1;overflow-y:auto;margin:12px 0;padding-right:4px;}
+.modal{background:var(--surface);border-radius:var(--radius-lg);padding:24px;width:440px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,.15);height:540px;display:flex;flex-direction:column;}
+.changelog-body{flex:1;overflow-y:auto;margin:12px 0;padding-right:6px;}
 .modal h2{font-size:16px;font-weight:500;margin-bottom:6px;}
 .modal p{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;}
 .modal-steps{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.8;counter-reset:step;}
@@ -1732,11 +1732,12 @@ function calIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><rect x="3" y
 function taskSyncIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`;}
 
 // ── Export ─────────────────────────────────────────────────────────────────
+function formatExportDate(isoStr){ if(!isoStr) return ''; const d=new Date(isoStr); const day=String(d.getDate()).padStart(2,'0'); const mon=String(d.getMonth()+1).padStart(2,'0'); const yr=d.getFullYear(); return `${day}.${mon}.${yr}`; }
+function formatExportTime(isoStr){ if(!isoStr) return ''; const d=new Date(isoStr); const h=String(d.getHours()).padStart(2,'0'); const m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m} GMT+7`; }
 function exportCSV(){
-  const rows = [['Name','Type','Deadline','Time','Remark','Created','Updated'],...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created?.replace('Z',' UTC')||'',e.updated?.replace('Z',' UTC')||''])];
+  const rows = [['ID','Name','Type','Deadline','Time','Remark','Date Created','Time Created','Updated'],...entries.map(e=>{const timeStr=e.time?(e.timeTo?`${e.time} - ${e.timeTo}`:e.time):'';return [e.id||'',e.name,e.type||'',e.deadline||'',timeStr,e.remark||'',formatExportDate(e.createdAt),formatExportTime(e.createdAt),formatExportDate(e.updatedAt)];})];
   const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  // \uFEFF = UTF-8 BOM — required for Excel to correctly read Thai and other non-ASCII characters
-  dl('worklog.csv','data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv));
+  dl('worklog.csv','data:text/csv;charset=utf-8,'+encodeURIComponent('﻿'+csv));
 }
 function exportJSON(){
   const sanitized = entries.map(e=>({...e,created:e.created?.replace('Z',' UTC'),updated:e.updated?.replace('Z',' UTC')}));
@@ -1745,29 +1746,15 @@ function exportJSON(){
 function exportXLSX(){
   if(typeof XLSX === 'undefined'){ toast('SheetJS not loaded yet, try again.'); return; }
   const rows = [
-    ['Name','Type','Deadline','Time','Remark','Created','Updated'],
-    ...entries.map(e=>[e.name,e.type||'',e.deadline||'',e.time||'',e.remark||'',e.created?.replace('Z',' UTC')||'',e.updated?.replace('Z',' UTC')||''])
+    ['ID','Name','Type','Deadline','Time','Remark','Date Created','Time Created','Updated'],
+    ...entries.map(e=>{const timeStr=e.time?(e.timeTo?`${e.time} - ${e.timeTo}`:e.time):'';return [e.id||'',e.name,e.type||'',e.deadline||'',timeStr,e.remark||'',formatExportDate(e.createdAt),formatExportTime(e.createdAt),formatExportDate(e.updatedAt)];})
   ];
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  // Column widths
-  ws['!cols'] = [{wch:30},{wch:12},{wch:14},{wch:10},{wch:40},{wch:22},{wch:22}];
+  ws['!cols'] = [{wch:12},{wch:30},{wch:12},{wch:14},{wch:14},{wch:40},{wch:14},{wch:16},{wch:14}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Work Log');
   XLSX.writeFile(wb, 'worklog.xlsx');
 }
-function dl(name,href){ const a=document.createElement('a'); a.href=href; a.download=name; a.click(); }
-
-// ── Toast ──────────────────────────────────────────────────────────────────
-function toast(msg,dur=2400){
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'),dur);
-}
-
-// ── Google Calendar ────────────────────────────────────────────────────────
-function openGCalModal(){ document.getElementById('gcal-modal').classList.add('open'); }
-function closeGCalModal(){ document.getElementById('gcal-modal').classList.remove('open'); }
-
 function gcalAuthorise(){
   const cid = document.getElementById('gcal-client-id').value.trim();
   if(!cid){ toast('Paste your Client ID first.'); return; }
