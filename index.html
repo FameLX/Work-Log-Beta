@@ -295,7 +295,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.8</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.9</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -1252,10 +1252,14 @@ function updateBulkBar(){
   document.getElementById('bulk-count').textContent = `${count} selected`;
 }
 
-function bulkDelete(){
+async function bulkDelete(){
   if(!selectedIds.size) return;
   const count = selectedIds.size;
-  if(!confirm(`Delete ${count} ${count===1?'entry':'entries'} permanently?`)) return;
+  if(!confirm(`Move ${count} ${count===1?'entry':'entries'} to Trash?`)) return;
+  const toDelete = [...selectedIds].map(id=>entries.find(e=>e.id===id)).filter(Boolean);
+  if(gcalToken){
+    await Promise.all(toDelete.map(e=>e.syncMode==='task' ? deleteFromGTask(e,true) : deleteFromGCal(e,true)));
+  }
   selectedIds.forEach(id=>{
     const idx = entries.findIndex(e=>e.id===id);
     if(idx!==-1){ trash.unshift({...entries[idx], trashedAt: new Date().toISOString()}); entries.splice(idx,1); }
@@ -1263,7 +1267,7 @@ function bulkDelete(){
   selectedIds.clear();
   save(); saveTrash(); updateTrashBadge();
   toggleSelectMode();
-  toast(`${count} ${count===1?'entry':'entries'} deleted.`);
+  toast(`${count} ${count===1?'entry':'entries'} moved to Trash. Restore within 5 days from Settings.`);
 }
 
 function bulkArchive(){
@@ -1441,7 +1445,9 @@ function generateRepeatDates(startDate, silent=false){
     return [...customSelectedDates].sort();
   }
 
-  return dates;
+  // Safety net: the base entry already covers startDate — never repeat it
+  // (can happen in monthly mode when the target day/weekday falls in the starting month).
+  return dates.filter(d => d !== startDate);
 }
 
 function openRepeatModal(baseEntry, dates){
@@ -1955,16 +1961,18 @@ async function patchGCal(entry, silent=false){
   }catch{ if(!silent) toast('Could not reach Google Calendar.'); }
 }
 
-async function deleteFromGCal(entry){
+async function deleteFromGCal(entry, silent=false){
   if(!gcalToken||!entry?.gcalEventId) return;
   try{
     const res = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${entry.gcalEventId}`,
       {method:'DELETE', headers:{Authorization:`Bearer ${gcalToken}`}}
     );
-    if(res.ok||res.status===204) toast(`Calendar event removed for "${entry.name}".`);
-    else toast('Calendar delete failed — token may have expired. Remove manually.');
-  }catch{ toast('Could not reach Google Calendar.'); }
+    if(!silent){
+      if(res.ok||res.status===204) toast(`Calendar event removed for "${entry.name}".`);
+      else toast('Calendar delete failed — token may have expired. Remove manually.');
+    }
+  }catch{ if(!silent) toast('Could not reach Google Calendar.'); }
 }
 
 // ── Google Tasks ────────────────────────────────────────────────────────────
@@ -2014,15 +2022,17 @@ async function patchGTask(entry, silent=false){
   }catch{ if(!silent) toast('Could not reach Google Tasks.'); }
 }
 
-async function deleteFromGTask(entry){
+async function deleteFromGTask(entry, silent=false){
   if(!gcalToken||!entry?.gcalTaskId) return;
   try{
     const res = await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${entry.gcalTaskId}`,{
       method:'DELETE', headers:{Authorization:`Bearer ${gcalToken}`}
     });
-    if(res.ok||res.status===204) toast(`Task removed for "${entry.name}".`);
-    else toast('Task delete failed — token may have expired. Remove manually.');
-  }catch{ toast('Could not reach Google Tasks.'); }
+    if(!silent){
+      if(res.ok||res.status===204) toast(`Task removed for "${entry.name}".`);
+      else toast('Task delete failed — token may have expired. Remove manually.');
+    }
+  }catch{ if(!silent) toast('Could not reach Google Tasks.'); }
 }
 
 // ── Settings ───────────────────────────────────────────────────────────────
@@ -2211,7 +2221,15 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.2.8', date: 'July 2026', latest: true,
+    version: 'v1.2.9', date: 'July 2026', latest: true,
+    items: [
+      'Fix: bulk-delete confirm dialog said "permanently" even though entries were always moved to Trash — wording corrected',
+      'Fix: bulk delete now also removes the linked Google Calendar event / Google Task, matching single-entry delete behavior',
+      'Fix: monthly repeat (same day or same weekday of month) could generate a duplicate entry on the start date itself'
+    ]
+  },
+  {
+    version: 'v1.2.8', date: 'July 2026', latest: false,
     items: [
       'Fix: editing an entry showed 4 time picker boxes instead of 2 — initializeEditTimePickers() was being called twice (once from render(), once from startEdit())'
     ]
