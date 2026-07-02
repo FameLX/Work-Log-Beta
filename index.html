@@ -295,7 +295,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.3.0</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.3.1</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -703,6 +703,8 @@ let trash = JSON.parse(localStorage.getItem('wl2_trash') || '[]');
 // Migration: add updated field to old entries that don't have it
 entries.forEach(e => { if(!e.updated) e.updated = e.created; });
 archived.forEach(e => { if(!e.updated) e.updated = e.created; });
+// Migration: v1.2.9 bulkDelete briefly wrote 'trashedAt' instead of 'deletedAt'
+trash.forEach(e => { if(!e.deletedAt && e.trashedAt){ e.deletedAt = e.trashedAt; delete e.trashedAt; } });
 // Purge trash entries older than 5 days
 (function purgeOldTrash(){
   const cutoff = Date.now() - 5*86400000;
@@ -908,7 +910,7 @@ function renderTrash(){
         <div class="trash-item-name">${esc(e.name)}</div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;">
           ${typeChip}
-          <span style="font-size:12px;color:var(--text3);">Deleted ${fmtDate(e.deletedAt.split('T')[0])}</span>
+          <span style="font-size:12px;color:var(--text3);">Deleted ${e.deletedAt ? fmtDate(e.deletedAt.split('T')[0]) : '—'}</span>
           <span style="font-size:12px;color:var(--danger);">· ${daysLeft} day${daysLeft!==1?'s':''} remaining</span>
         </div>
       </div>
@@ -1278,7 +1280,7 @@ async function bulkDelete(){
   }
   selectedIds.forEach(id=>{
     const idx = entries.findIndex(e=>e.id===id);
-    if(idx!==-1){ trash.unshift({...entries[idx], trashedAt: new Date().toISOString()}); entries.splice(idx,1); }
+    if(idx!==-1){ trash.unshift({...entries[idx], deletedAt: new Date().toISOString()}); entries.splice(idx,1); }
   });
   selectedIds.clear();
   save(); saveTrash(); updateTrashBadge();
@@ -2271,7 +2273,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.3.0', date: 'July 2026', latest: true,
+    version: 'v1.3.1', date: 'July 2026', latest: true,
+    items: [
+      'CRITICAL FIX: bulk delete (v1.2.9) wrote a "trashedAt" field instead of "deletedAt" — this crashed the entire Trash view whenever it contained a bulk-deleted entry, and caused those entries to be silently purged on the next page load. Fixed, plus a one-time migration for any entries already affected.'
+    ]
+  },
+  {
+    version: 'v1.3.0', date: 'July 2026', latest: false,
     items: [
       'Google Calendar: added a Disconnect button and a Reconnect button — previously the only way to disconnect was to clear browser storage manually',
       'Google Calendar: Client ID is now remembered, so Reconnect doesn\'t require re-pasting it',
