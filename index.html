@@ -295,7 +295,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.3</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.4</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -1780,10 +1780,14 @@ async function exportXLSX(){
   ];
   entries.forEach(e => ws.addRow(exportRow(e)));
 
+  ws.autoFilter = { from: 'A1', to: { row: 1, column: ws.columns.length } };
+
   const headerRow = ws.getRow(1);
-  headerRow.eachCell(cell=>{
+  headerRow.eachCell((cell, colNumber)=>{
     cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FF60497A'}};
     cell.font = {color:{argb:'FFFFFFFF'}, bold:true};
+    if(colNumber>=3 && colNumber<=5) cell.alignment = {horizontal:'center'};
+    if(colNumber>=7 && colNumber<=9) cell.alignment = {horizontal:'right'};
   });
 
   for(let i=2;i<=ws.rowCount;i++){
@@ -2210,7 +2214,14 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.2.3', date: 'July 2026', latest: true,
+    version: 'v1.2.4', date: 'July 2026', latest: true,
+    items: [
+      'Excel export: header cells for Type/Deadline/Time now also centered (matching data rows)',
+      'Excel export: added AutoFilter dropdowns on every column header, including Type, Deadline, and Date Created'
+    ]
+  },
+  {
+    version: 'v1.2.3', date: 'July 2026', latest: false,
     items: [
       'Switched Excel export from SheetJS to ExcelJS for full cell styling support',
       'Excel export: header row colored #60497A, body rows alternate #E4DFEC / #CCC0DA',
