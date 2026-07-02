@@ -295,7 +295,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.5</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.1</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -2226,88 +2226,23 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.2.5', date: 'July 2026', latest: true,
+    version: 'v1.2.1', date: 'July 2026', latest: true,
     items: [
-      'CRITICAL FIX: restored toast(), openGCalModal(), and closeGCalModal() functions accidentally deleted during export rewrite — this had broken "Connect Google Calendar" and silently killed any code running after a toast() call (e.g. auto-sync to GCal on new entries)'
-    ]
-  },
-  {
-    version: 'v1.2.4', date: 'July 2026', latest: false,
-    items: [
-      'Excel export: header cells for Type/Deadline/Time now also centered (matching data rows)',
-      'Excel export: added AutoFilter dropdowns on every column header, including Type, Deadline, and Date Created'
-    ]
-  },
-  {
-    version: 'v1.2.3', date: 'July 2026', latest: false,
-    items: [
-      'Switched Excel export from SheetJS to ExcelJS for full cell styling support',
-      'Excel export: header row colored #60497A, body rows alternate #E4DFEC / #CCC0DA',
-      'Excel export: Type/Deadline/Time columns centered, Date Created/Time Created/Updated right-aligned',
-      'Deadline and Date Created now use DD/MM/YYYY format',
-      'Updated column now shows DD/MM/YYYY , HH:mm:ss (full date + time of last edit)',
-      'Time Created explicitly converted from UTC to GMT+7, independent of the viewer\'s system timezone'
-    ]
-  },
-  {
-    version: 'v1.2.2', date: 'July 2026', latest: false,
-    items: [
-      'Fix multi-select checkbox overlapping entry text — moved to end of card actions row'
-    ]
-  },
-  {
-    version: 'v1.2.1', date: 'July 2026', latest: false,
-    items: [
-      'Fix export: Date Created/Time Created/Updated columns were blank — now falls back to legacy created/updated fields',
-      'Fix export: ID column showed scientific notation in Excel — now forced to text'
+      'Fix: "Connect Google Calendar" button was not responding',
+      'Fix: toast notifications not appearing, which was also silently blocking auto-sync to GCal on new entries'
     ]
   },
   {
     version: 'v1.2.0', date: 'July 2026', latest: false,
     items: [
       'Multi-select mode: bulk archive and bulk delete with checkbox column',
-      'Repeat entries: daily (every N days), weekly (pick days), monthly (same day or weekday), yearly, custom date picker',
-      'Monthly repeat calendar preview with navigation and date toggles',
-      'Fixed TDZ crash from let/const ordering in init',
-      'Fixed monthly repeat skipping the starting month',
-      'Fixed timezone bug in repeat date formatting',
-      'Time picker UX: scroll-wheel clickable buttons with manual typing and auto-colon',
-      'GCal duplicate prevention: PATCH if event exists, POST if new',
-      'Silent sync mode suppresses per-entry toasts',
-      'Added error surfacing in render and time picker init for diagnostics'
-    ]
-  },
-  {
-    version: 'v1.1.9', date: 'July 2026', latest: false,
-    items: [
-      'Fix TDZ crash - init() now runs after all let/const state declarations (Chrome strict-mode fix)',
-      'Add error surfacing in render and time picker init to diagnose blank entries'
-    ]
-  },
-  {
-    version: 'v1.1.8', date: 'July 2026', latest: false,
-    items: [
-      'Diagnostic error messages: render() and initializeTimePickers() surface exceptions in UI and console'
-    ]
-  },
-  {
-    version: 'v1.1.7', date: 'July 2026', latest: false,
-    items: [
-      'Fix replaceChild crash in time picker init, fix GCAL_COLOR_OPTIONS TDZ error'
-    ]
-  },
-  {
-    version: 'v1.1.6', date: 'July 2026', latest: false,
-    items: [
-      'Fix JS crash from null element access, fix double style attribute on entry cards'
-    ]
-  },
-  {
-    version: 'v1.1.5', date: 'June 2026', latest: false,
-    items: [
-      'Multi-day event support with deadlineEnd field',
-      'Repeat entry UI framework (buttons, calendar preview, modal)',
-      'Multi-select framework (checkbox, bulk bar, SelectMode state)'
+      'Repeat entries: daily (every N days), weekly (pick days), monthly (same day or weekday), yearly, custom date picker, with calendar preview and confirm modal',
+      'Redesigned time picker: scrollable clickable button list with manual typing and auto-colon',
+      'Google Calendar sync fix: no more duplicate events on reconnect; PATCH existing, POST only new',
+      'Multi-day event status badges: In Progress, Last Chance, soon',
+      'Excel export rebuilt: colored header/rows, centered and right-aligned columns, AutoFilter dropdowns, corrected date/time formats (DD/MM/YYYY, GMT+7 timestamps)',
+      'CSV export: fixed ID scientific-notation issue, added Date Created/Time Created/Updated columns',
+      'Versioned changelog with per-version navigation'
     ]
   },
   {
