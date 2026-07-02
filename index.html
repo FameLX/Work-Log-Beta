@@ -295,7 +295,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.0</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.2.1</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -1735,7 +1735,12 @@ function taskSyncIcon(){return`<svg class="icon sm" viewBox="0 0 24 24"><path d=
 function formatExportDate(isoStr){ if(!isoStr) return ''; const d=new Date(isoStr); const day=String(d.getDate()).padStart(2,'0'); const mon=String(d.getMonth()+1).padStart(2,'0'); const yr=d.getFullYear(); return `${day}.${mon}.${yr}`; }
 function formatExportTime(isoStr){ if(!isoStr) return ''; const d=new Date(isoStr); const h=String(d.getHours()).padStart(2,'0'); const m=String(d.getMinutes()).padStart(2,'0'); return `${h}:${m} GMT+7`; }
 function exportCSV(){
-  const rows = [['ID','Name','Type','Deadline','Time','Remark','Date Created','Time Created','Updated'],...entries.map(e=>{const timeStr=e.time?(e.timeTo?`${e.time} - ${e.timeTo}`:e.time):'';return [e.id||'',e.name,e.type||'',e.deadline||'',timeStr,e.remark||'',formatExportDate(e.createdAt),formatExportTime(e.createdAt),formatExportDate(e.updatedAt)];})];
+  const rows = [['ID','Name','Type','Deadline','Time','Remark','Date Created','Time Created','Updated'],...entries.map(e=>{
+    const timeStr=e.time?(e.timeTo?`${e.time} - ${e.timeTo}`:e.time):'';
+    const created = e.createdAt || e.created;
+    const updated = e.updatedAt || e.updated;
+    return ['="'+(e.id||'')+'"',e.name,e.type||'',e.deadline||'',timeStr,e.remark||'',formatExportDate(created),formatExportTime(created),formatExportDate(updated)];
+  })];
   const csv = rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
   dl('worklog.csv','data:text/csv;charset=utf-8,'+encodeURIComponent('﻿'+csv));
 }
@@ -1747,10 +1752,20 @@ function exportXLSX(){
   if(typeof XLSX === 'undefined'){ toast('SheetJS not loaded yet, try again.'); return; }
   const rows = [
     ['ID','Name','Type','Deadline','Time','Remark','Date Created','Time Created','Updated'],
-    ...entries.map(e=>{const timeStr=e.time?(e.timeTo?`${e.time} - ${e.timeTo}`:e.time):'';return [e.id||'',e.name,e.type||'',e.deadline||'',timeStr,e.remark||'',formatExportDate(e.createdAt),formatExportTime(e.createdAt),formatExportDate(e.updatedAt)];})
+    ...entries.map(e=>{
+      const timeStr=e.time?(e.timeTo?`${e.time} - ${e.timeTo}`:e.time):'';
+      const created = e.createdAt || e.created;
+      const updated = e.updatedAt || e.updated;
+      return [String(e.id||''),e.name,e.type||'',e.deadline||'',timeStr,e.remark||'',formatExportDate(created),formatExportTime(created),formatExportDate(updated)];
+    })
   ];
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:12},{wch:30},{wch:12},{wch:14},{wch:14},{wch:40},{wch:14},{wch:16},{wch:14}];
+  // Force ID column to text type so large timestamp IDs don't render as scientific notation
+  for(let r=1;r<rows.length;r++){
+    const cellRef = XLSX.utils.encode_cell({r, c:0});
+    if(ws[cellRef]) ws[cellRef].t = 's';
+  }
+  ws['!cols'] = [{wch:16},{wch:30},{wch:12},{wch:14},{wch:14},{wch:40},{wch:14},{wch:16},{wch:14}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Work Log');
   XLSX.writeFile(wb, 'worklog.xlsx');
@@ -2162,7 +2177,14 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.2.0', date: 'July 2026', latest: true,
+    version: 'v1.2.1', date: 'July 2026', latest: true,
+    items: [
+      'Fix export: Date Created/Time Created/Updated columns were blank — now falls back to legacy created/updated fields',
+      'Fix export: ID column showed scientific notation in Excel — now forced to text'
+    ]
+  },
+  {
+    version: 'v1.2.0', date: 'July 2026', latest: false,
     items: [
       'Multi-select mode: bulk archive and bulk delete with checkbox column',
       'Repeat entries: daily (every N days), weekly (pick days), monthly (same day or weekday), yearly, custom date picker',
