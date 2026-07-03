@@ -296,7 +296,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.4.0</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.3.0</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -2342,74 +2342,16 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.4.0', date: 'July 2026', latest: true,
+    version: 'v1.3.0', date: 'July 2026', latest: true,
     items: [
       'Search now understands dates and times: "July 2", "02/07", "2/7/2026", "13:30", and "1:30 PM" all match — not just the exact stored date format',
-      'Google Calendar: the pill now turns red and says "Reconnect Google Calendar" when your session token expires (after ~1 hour), instead of silently failing every sync in the background'
-    ]
-  },
-  {
-    version: 'v1.3.1', date: 'July 2026', latest: false,
-    items: [
-      'CRITICAL FIX: bulk delete (v1.2.9) wrote a "trashedAt" field instead of "deletedAt" — this crashed the entire Trash view whenever it contained a bulk-deleted entry, and caused those entries to be silently purged on the next page load. Fixed, plus a one-time migration for any entries already affected.'
-    ]
-  },
-  {
-    version: 'v1.3.0', date: 'July 2026', latest: false,
-    items: [
-      'Google Calendar: added a Disconnect button and a Reconnect button — previously the only way to disconnect was to clear browser storage manually',
-      'Google Calendar: Client ID is now remembered, so Reconnect doesn\'t require re-pasting it',
-      'Export Archive: added Export CSV/Excel/JSON for archived entries, matching the existing active-entries export'
-    ]
-  },
-  {
-    version: 'v1.2.9', date: 'July 2026', latest: false,
-    items: [
-      'Fix: bulk-delete confirm dialog said "permanently" even though entries were always moved to Trash — wording corrected',
-      'Fix: bulk delete now also removes the linked Google Calendar event / Google Task, matching single-entry delete behavior',
-      'Fix: monthly repeat (same day or same weekday of month) could generate a duplicate entry on the start date itself'
-    ]
-  },
-  {
-    version: 'v1.2.8', date: 'July 2026', latest: false,
-    items: [
-      'Fix: editing an entry showed 4 time picker boxes instead of 2 — initializeEditTimePickers() was being called twice (once from render(), once from startEdit())'
-    ]
-  },
-  {
-    version: 'v1.2.7', date: 'July 2026', latest: false,
-    items: [
-      'Fix: choosing a dark Surface color always forced text to white, ignoring the accent/text color you picked — removed the auto-contrast override so your chosen text color always applies'
-    ]
-  },
-  {
-    version: 'v1.2.6', date: 'July 2026', latest: false,
-    items: [
-      'Fix: time picker did not clear after adding an entry or clicking Clear form — the visible time trigger and selected hour/minute buttons kept showing the old time even though the hidden field was cleared'
-    ]
-  },
-  {
-    version: 'v1.2.5', date: 'July 2026', latest: false,
-    items: [
-      'CRITICAL FIX: restored toast(), openGCalModal(), and closeGCalModal() functions accidentally deleted during export rewrite — this had broken "Connect Google Calendar" and silently killed any code running after a toast() call (e.g. auto-sync to GCal on new entries)'
-    ]
-  },
-  {
-    version: 'v1.2.4', date: 'July 2026', latest: false,
-    items: [
-      'Excel export: header cells for Type/Deadline/Time now also centered (matching data rows)',
-      'Excel export: added AutoFilter dropdowns on every column header, including Type, Deadline, and Date Created'
-    ]
-  },
-  {
-    version: 'v1.2.3', date: 'July 2026', latest: false,
-    items: [
-      'Switched Excel export from SheetJS to ExcelJS for full cell styling support',
-      'Excel export: header row colored #60497A, body rows alternate #E4DFEC / #CCC0DA',
-      'Excel export: Type/Deadline/Time columns centered, Date Created/Time Created/Updated right-aligned',
-      'Deadline and Date Created now use DD/MM/YYYY format',
-      'Updated column now shows DD/MM/YYYY , HH:mm:ss (full date + time of last edit)',
-      'Time Created explicitly converted from UTC to GMT+7, independent of the viewer\'s system timezone'
+      'Google Calendar: pill turns red and prompts "Reconnect Google Calendar" when your session token expires (after ~1 hour), instead of silently failing every sync',
+      'Google Calendar: added Disconnect and Reconnect buttons — no more clearing browser storage manually to disconnect; Client ID is remembered so reconnecting is one click',
+      'Export Archive: added Export CSV/Excel/JSON for archived entries, matching the existing active-entries export',
+      'Fix: bulk delete now also removes the linked Google Calendar event / Google Task, and its confirm dialog correctly says "move to Trash" instead of "delete permanently"',
+      'Fix: monthly repeat (same day or same weekday of month) could generate a duplicate entry on the start date itself',
+      'Fix: a Trash-view crash that could occur after bulk-deleting entries',
+      'Excel export overhaul: colored header/rows, centered and right-aligned columns, AutoFilter dropdowns, corrected date/time formats (DD/MM/YYYY, GMT+7 timestamps)'
     ]
   },
   {
@@ -2438,39 +2380,6 @@ const CHANGELOG = [
       'GCal duplicate prevention: PATCH if event exists, POST if new',
       'Silent sync mode suppresses per-entry toasts',
       'Added error surfacing in render and time picker init for diagnostics'
-    ]
-  },
-  {
-    version: 'v1.1.9', date: 'July 2026', latest: false,
-    items: [
-      'Fix TDZ crash - init() now runs after all let/const state declarations (Chrome strict-mode fix)',
-      'Add error surfacing in render and time picker init to diagnose blank entries'
-    ]
-  },
-  {
-    version: 'v1.1.8', date: 'July 2026', latest: false,
-    items: [
-      'Diagnostic error messages: render() and initializeTimePickers() surface exceptions in UI and console'
-    ]
-  },
-  {
-    version: 'v1.1.7', date: 'July 2026', latest: false,
-    items: [
-      'Fix replaceChild crash in time picker init, fix GCAL_COLOR_OPTIONS TDZ error'
-    ]
-  },
-  {
-    version: 'v1.1.6', date: 'July 2026', latest: false,
-    items: [
-      'Fix JS crash from null element access, fix double style attribute on entry cards'
-    ]
-  },
-  {
-    version: 'v1.1.5', date: 'June 2026', latest: false,
-    items: [
-      'Multi-day event support with deadlineEnd field',
-      'Repeat entry UI framework (buttons, calendar preview, modal)',
-      'Multi-select framework (checkbox, bulk bar, SelectMode state)'
     ]
   },
   {
