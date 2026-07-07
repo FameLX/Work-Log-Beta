@@ -296,7 +296,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.4.4</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.4.5</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -1676,7 +1676,7 @@ function entryHTML(e, isArchived=false){
 
   const deadlineChip = e.deadline ? (() => {
     const rangeStr = e.deadlineEnd ? `${fmtDate(e.deadline)} → ${fmtDate(e.deadlineEnd)}` : fmtDate(e.deadline);
-    const timeStr = e.time ? ' · '+fmtTime(e.time) : '';
+    const timeStr = e.time ? ' · ' + fmtTime(e.time) + (e.timeTo ? ' → ' + fmtTime(e.timeTo) : '') : '';
     const statusLabel = status===' overdue' ? ' · overdue' : status===' today' ? ' · I am due <b>TODAY!!!</b>. Don\'t forget to do me. <b>YAY!!!</b>' : status===' soon' ? ' · soon' : status===' in-progress' ? ' · In Progress' : status===' last-day' ? ' · <b>Hey, Last Chance</b>, is this done yet?' : '';
     return `<span class="chip deadline${status}">${rangeStr}${timeStr}${statusLabel.includes('<b>') ? statusLabel : esc(statusLabel)}</span>`;
   })() : '';
@@ -2377,7 +2377,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.4.4', date: 'July 2026', latest: true,
+    version: 'v1.4.5', date: 'July 2026', latest: true,
+    items: [
+      'Entry cards now display end time (timeTo) when set — shows "2:00PM → 5:30PM" for timed meetings/events that span multiple hours'
+    ]
+  },
+  {
+    version: 'v1.4.4', date: 'July 2026', latest: false,
     items: [
       'Archive view now defaults to ascending sort (oldest/completed entries first) when you switch to it — makes it more natural to review archived work chronologically'
     ]
