@@ -296,7 +296,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.4.3</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.4.4</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -1579,6 +1579,15 @@ function toggleView(){
   document.getElementById('main-title').textContent = viewMode==='active' ? 'Entries' : 'Archive';
   document.querySelector('.sidebar').style.opacity = viewMode==='archive' ? '0.4' : '1';
   document.querySelector('.sidebar').style.pointerEvents = viewMode==='archive' ? 'none' : '';
+  // Archive view defaults to ascending sort (oldest/completed entries first)
+  if(viewMode==='archive'){
+    sortDir = 'asc';
+    const btn = document.getElementById('sort-dir-btn');
+    if(btn){
+      btn.title = 'Currently ascending — click for descending';
+      btn.innerHTML = `<svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`;
+    }
+  }
   render();
 }
 
@@ -2368,7 +2377,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.4.3', date: 'July 2026', latest: true,
+    version: 'v1.4.4', date: 'July 2026', latest: true,
+    items: [
+      'Archive view now defaults to ascending sort (oldest/completed entries first) when you switch to it — makes it more natural to review archived work chronologically'
+    ]
+  },
+  {
+    version: 'v1.4.3', date: 'July 2026', latest: false,
     items: [
       'Fix: deadline sorting now sub-sorts by time when multiple entries share the same date — entries on the same day now appear in chronological order (earliest time first)'
     ]
