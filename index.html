@@ -296,7 +296,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.4.6</span></div>
+    <div class="topbar-logo" style="display:flex;align-items:center;gap:8px;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;" title="View changelog">/ v1.3.3</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -2385,27 +2385,14 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.4.6', date: 'July 2026', latest: true,
+    version: 'v1.3.3', date: 'July 2026', latest: true,
     items: [
-      'Fix: sorting now automatically resets when toggling between entries and archive views — entries view defaults to descending (newest first), archive defaults to ascending (oldest first)'
-    ]
-  },
-  {
-    version: 'v1.4.5', date: 'July 2026', latest: false,
-    items: [
-      'Entry cards now display end time (timeTo) when set — shows "2:00PM → 5:30PM" for timed meetings/events that span multiple hours'
-    ]
-  },
-  {
-    version: 'v1.4.4', date: 'July 2026', latest: false,
-    items: [
-      'Archive view now defaults to ascending sort (oldest/completed entries first) when you switch to it — makes it more natural to review archived work chronologically'
-    ]
-  },
-  {
-    version: 'v1.4.3', date: 'July 2026', latest: false,
-    items: [
-      'Fix: deadline sorting now sub-sorts by time when multiple entries share the same date — entries on the same day now appear in chronological order (earliest time first)'
+      'Entry cards now display end time (timeTo) when set — shows "2:00PM → 5:30PM" for timed meetings/events that span multiple hours',
+      'Archive view now defaults to ascending sort (oldest/completed entries first) when you switch to it — makes it more natural to review archived work chronologically',
+      'Fix: deadline sorting now sub-sorts by time when multiple entries share the same date — entries on the same day now appear in chronological order (earliest time first)',
+      'Fix: GCal token is now verified on page load instead of trusting stored presence — immediately shows "Reconnect" if the token has expired',
+      'Fix: GCal event colours now use live settings when syncing — changing a type\'s colour in Settings takes effect on existing entries instead of requiring re-edit',
+      'Fix: sorting now automatically resets when toggling between entries and archive views — entries defaults to descending (newest first), archive defaults to ascending (oldest first)'
     ]
   },
   {
