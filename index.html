@@ -29,7 +29,7 @@ a{color:inherit;}
 /* Layout */
 .app{display:grid;grid-template-columns:320px 1fr;grid-template-rows:auto 1fr;min-height:100vh;}
 .topbar{grid-column:1/-1;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;}
-.topbar-logo{font-size:15px;font-weight:500;letter-spacing:-.3px;}
+.topbar-logo{font-size:15px;font-weight:500;letter-spacing:-.3px;user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;}
 .topbar-logo span{opacity:.4;}
 .topbar-spacer{flex:1;}
 .gcal-pill{display:flex;align-items:center;gap:6px;font-size:12px;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:border-color .15s;}
