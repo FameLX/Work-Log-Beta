@@ -66,11 +66,11 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 
 /* Main */
 .main{display:flex;flex-direction:column;overflow:hidden;}
-.main-header{padding:16px 24px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);min-height:56px;}
-.main-header h1{font-size:15px;font-weight:500;letter-spacing:-.3px;}
+.main-header{padding:20px 24px 0;display:flex;align-items:center;gap:12px;}
+.main-header h1{font-size:18px;font-weight:500;letter-spacing:-.3px;}
 .entry-count{font-size:12px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);padding:2px 9px;border-radius:99px;}
 .main-header-spacer{flex:1;}
-.filter-bar{padding:12px 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);min-height:auto;}
+.filter-bar{padding:12px 24px;display:flex;gap:6px;flex-wrap:nowrap;align-items:center;border-bottom:1px solid var(--border);overflow:hidden;}
 .filter-chip{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .12s;}
 .filter-chip:hover{border-color:var(--border2);}
 .filter-chip.active{background:var(--text);color:#fff;border-color:var(--text);}
@@ -290,23 +290,6 @@ svg.icon.sm{width:13px;height:13px;}
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;display:flex;flex-direction:column;gap:8px;min-width:140px;text-align:center;box-shadow:var(--shadow);}
 .stat-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);}
 .stat-value{font-size:20px;font-weight:600;color:var(--text);}
-.stat-cards-row{display:flex;gap:10px;align-items:center;justify-content:center;flex-shrink:0;}
-
-/* Type Filter Chips */
-.type-filter-section{display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:0 1 auto;}
-.type-filter-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 8px;border-radius:99px;background:var(--accent);color:var(--accent-text);border:none;cursor:pointer;transition:all .12s;}
-.type-filter-chip:hover{opacity:.88;}
-.type-filter-chip-x{cursor:pointer;font-weight:600;}
-.type-filter-dropdown-btn{font-size:12px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:all .12s;}
-.type-filter-dropdown-btn:hover{border-color:var(--border2);color:var(--text);}
-.type-filter-dropdown{position:relative;display:inline-block;}
-.type-filter-dropdown-menu{position:absolute;top:100%;left:0;z-index:1000;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,.15);min-width:180px;max-height:300px;overflow-y:auto;margin-top:4px;display:none;}
-.type-filter-dropdown-menu.open{display:block;}
-.type-filter-dropdown-item{display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:12px;cursor:pointer;transition:background .12s;}
-.type-filter-dropdown-item:hover{background:var(--surface2);}
-.type-filter-dropdown-item input[type=checkbox]{accent-color:var(--accent);cursor:pointer;}
-.type-filter-clear-btn{font-size:12px;padding:4px 8px;border-radius:99px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:all .12s;}
-.type-filter-clear-btn:hover{border-color:var(--border2);color:var(--text);}
 
 @media(max-width:700px){
   .app{grid-template-columns:1fr;}
@@ -322,7 +305,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.4.8</span></div>
+    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.4.9</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -477,25 +460,28 @@ svg.icon.sm{width:13px;height:13px;}
   <!-- MAIN: Entries -->
   <main class="main">
     <div class="main-header">
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-        <h1 id="main-title" style="margin:0;font-size:15px;font-weight:500;">Entries</h1>
-        <span class="entry-count" id="entry-count">0</span>
-      </div>
-      <button class="btn btn-sm" id="view-toggle-btn" onclick="toggleView()" style="gap:5px;background:var(--surface);flex-shrink:0;">
+      <h1 id="main-title">Entries</h1>
+      <span class="entry-count" id="entry-count">0</span>
+      <div class="main-header-spacer"></div>
+      <button class="btn btn-sm" id="select-mode-btn" onclick="toggleSelectMode()" style="gap:5px;">
+        <svg class="icon sm" viewBox="0 0 24 24"><rect x="3" y="5" width="4" height="4" rx="1"/><rect x="3" y="11" width="4" height="4" rx="1"/><rect x="3" y="17" width="4" height="4" rx="1"/><line x1="10" y1="7" x2="21" y2="7"/><line x1="10" y1="13" x2="21" y2="13"/><line x1="10" y1="19" x2="21" y2="19"/></svg>
+        Select
+      </button>
+      <button class="btn btn-sm" id="view-toggle-btn" onclick="toggleView()" style="gap:5px;background:var(--surface);">
         <svg class="icon sm" viewBox="0 0 24 24"><path d="M5 8h14M5 12h14M5 16h14"/></svg>
         <span id="view-toggle-label">View Archive</span><span id="archive-count" style="font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:1px 7px;margin-left:2px;"></span>
       </button>
-      <div id="main-header-stat-card" style="flex:1;display:flex;justify-content:center;"></div>
-      <select class="sort-select" id="sort-select" onchange="setSortAndRender(this.value)" style="flex-shrink:0;">
+      <select class="sort-select" id="sort-select" onchange="setSortAndRender(this.value)">
         <option value="newest">Newest first</option>
         <option value="oldest">Oldest first</option>
         <option value="deadline" selected>By deadline</option>
         <option value="name">By name A–Z</option>
       </select>
-      <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle sort direction" style="flex-shrink:0;">
+      <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle sort direction">
         <svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
       </button>
     </div>
+    <div id="stat-cards-row" style="display:none;"></div>
     <div class="bulk-bar" id="bulk-bar">
       <span id="bulk-count">0 selected</span>
       <div style="flex:1;"></div>
@@ -756,7 +742,6 @@ let searchQuery = '';
 let gcalToken = localStorage.getItem('wl2_gcal_token') || null;
 let gcalClientId = localStorage.getItem('wl2_gcal_client_id') || '';
 let filterType = 'All';
-let selectedTypeFilters = JSON.parse(localStorage.getItem('wl2_selected_type_filters') || '[]');
 let sortMode = 'deadline';
 let sortDir = 'desc'; // deadline default: furthest first
 let pinnedId = null; // newly added entry shown at top until sort changes
@@ -1629,7 +1614,6 @@ function populateTypeSelects(){
 function toggleView(){
   viewMode = viewMode==='active' ? 'archive' : 'active';
   filterType = 'All';
-  selectedTypeFilters = [];
   document.getElementById('view-toggle-label').textContent = viewMode==='active' ? 'View Archive' : 'Back to Active';
   document.getElementById('main-title').textContent = viewMode==='active' ? 'Entries' : 'Archive';
   document.querySelector('.sidebar').style.opacity = viewMode==='archive' ? '0.4' : '1';
@@ -1681,81 +1665,96 @@ function calculateStats(source){
 
 function render(){
   const source = viewMode==='active' ? entries : archived;
-  const allAvailableTypes = [...new Set(source.map(e=>e.type).filter(Boolean))];
+  const types = ['All', ...new Set(source.map(e=>e.type).filter(Boolean))];
   const fb = document.getElementById('filter-bar');
-  const stats = calculateStats(source);
 
-  // Build type filter chips
-  const typeFilterChips = selectedTypeFilters.map((t, i) => `<span class="type-filter-chip">${esc(t)}<span class="type-filter-chip-x" data-remove-type="${i}">&times;</span></span>`).join('');
-  const typeFilterDropdownOpts = allAvailableTypes.filter(t => !selectedTypeFilters.includes(t)).map((t, i) => `<label class="type-filter-dropdown-item"><input type="checkbox" data-add-type="${i}" /> ${esc(t)}</label>`).join('');
-  const typeFilterDropdown = typeFilterDropdownOpts ? `<div class="type-filter-dropdown" id="type-filter-dropdown">
-    <button class="type-filter-dropdown-btn" onclick="toggleTypeFilterDropdown()">▼ Add type</button>
-    <div class="type-filter-dropdown-menu" id="type-filter-dropdown-menu">${typeFilterDropdownOpts}</div>
-  </div>` : '';
-  const clearAllBtn = selectedTypeFilters.length > 0 ? `<button class="type-filter-clear-btn" onclick="clearTypeFilters()">Clear all</button>` : '';
+  // Build stat cards row with 5 metrics
+  const allTaskCount = entries.length + archived.length;
+  const entriesCount = entries.length;
+  const archiveCount = archived.length;
 
-  const typeFilterSection = `<div class="type-filter-section">${typeFilterChips}${typeFilterDropdown}${clearAllBtn}</div>`;
+  // Calculate today (due today + in progress)
+  const now = new Date(); now.setHours(0,0,0,0);
+  let todayCount = 0;
+  entries.forEach(e => {
+    if(!e.deadline) return;
+    const start = new Date(e.deadline); start.setHours(0,0,0,0);
+    const end = e.deadlineEnd ? new Date(e.deadlineEnd) : start;
+    end.setHours(0,0,0,0);
+    const isMultiDay = e.deadlineEnd && e.deadline !== e.deadlineEnd;
+    if(isMultiDay){
+      const startDiff = Math.round((start - now) / 86400000);
+      const endDiff = Math.round((end - now) / 86400000);
+      if(startDiff <= 0 && endDiff > 0) todayCount++;
+      else if(endDiff === 0) todayCount++;
+    } else {
+      const diff = Math.round((start - now) / 86400000);
+      if(diff === 0) todayCount++;
+    }
+  });
 
-  const statCard = `<div class="stat-cards-row" style="flex:1;justify-content:center;">
+  // Calculate overdue
+  let overdueCount = 0;
+  entries.forEach(e => {
+    if(!e.deadline) return;
+    const start = new Date(e.deadline); start.setHours(0,0,0,0);
+    const end = e.deadlineEnd ? new Date(e.deadlineEnd) : start;
+    end.setHours(0,0,0,0);
+    const isMultiDay = e.deadlineEnd && e.deadline !== e.deadlineEnd;
+    if(isMultiDay){
+      const endDiff = Math.round((end - now) / 86400000);
+      if(endDiff < 0) overdueCount++;
+    } else {
+      const diff = Math.round((start - now) / 86400000);
+      if(diff < 0) overdueCount++;
+    }
+  });
+
+  const statCardsRow = `<div style="display:flex;gap:12px;justify-content:center;padding:16px 24px;flex-wrap:wrap;">
     <div class="stat-card" style="flex:0 0 auto;">
-      <div class="stat-label">Overdue</div>
-      <div class="stat-value" style="color:var(--danger);">${stats.overdue}</div>
+      <div class="stat-label">All Task</div>
+      <div class="stat-value">${allTaskCount}</div>
+    </div>
+    <div class="stat-card" style="flex:0 0 auto;">
+      <div class="stat-label">Entries</div>
+      <div class="stat-value">${entriesCount}</div>
+    </div>
+    <div class="stat-card" style="flex:0 0 auto;">
+      <div class="stat-label">Archive</div>
+      <div class="stat-value">${archiveCount}</div>
     </div>
     <div class="stat-card" style="flex:0 0 auto;">
       <div class="stat-label">Today</div>
-      <div class="stat-value" style="color:var(--warn);">${stats.today}</div>
+      <div class="stat-value" style="color:var(--warn);">${todayCount}</div>
     </div>
     <div class="stat-card" style="flex:0 0 auto;">
-      <div class="stat-label">Soon</div>
-      <div class="stat-value" style="color:var(--info);">${stats.soon}</div>
+      <div class="stat-label">Overdue</div>
+      <div class="stat-value" style="color:var(--danger);">${overdueCount}</div>
     </div>
   </div>`;
 
-  const syncAllBtn = (gcalToken && viewMode==='active') ? `<button class="btn btn-sm btn-sync-all" onclick="syncAllToGCal()" style="flex-shrink:0;">
+  const statRowEl = document.getElementById('stat-cards-row');
+  if(statRowEl){
+    statRowEl.innerHTML = statCardsRow;
+    statRowEl.style.display = 'block';
+    statRowEl.style.borderBottom = '1px solid var(--border)';
+  }
+
+  // Original filter bar with type chips
+  const syncAllBtn = (gcalToken && viewMode==='active') ? `<button class="btn btn-sm btn-sync-all" onclick="syncAllToGCal()" style="flex-shrink:0;margin-left:auto;">
     <svg class="icon sm" viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
     Sync All to GCal
   </button>` : '';
-
-  fb.innerHTML = `${typeFilterSection}${statCard}${syncAllBtn}`;
-
-  // Attach event listeners for type filter chips
-  setTimeout(() => {
-    document.querySelectorAll('[data-remove-type]').forEach(el => {
-      el.addEventListener('click', e => {
-        e.stopPropagation();
-        const idx = parseInt(el.dataset.removeType);
-        removeTypeFilter(selectedTypeFilters[idx]);
-      });
-    });
-    document.querySelectorAll('[data-add-type]').forEach(el => {
-      el.addEventListener('change', e => {
-        const idx = parseInt(el.dataset.addType);
-        if(e.target.checked) addTypeFilter(allAvailableTypes[idx]);
-      });
-    });
-  }, 0);
-
-  // Render main header stat card
-  const mainStatCard = `<div class="stat-cards-row">
-    <div class="stat-card" style="flex:0 0 auto;">
-      <div class="stat-label">Overdue</div>
-      <div class="stat-value" style="color:var(--danger);">${stats.overdue}</div>
-    </div>
-  </div>`;
-  const headerStatEl = document.getElementById('main-header-stat-card');
-  if(headerStatEl) headerStatEl.innerHTML = mainStatCard;
+  fb.innerHTML = types.map(t=>`<button class="filter-chip${filterType===t?' active':''}" onclick="setFilter('${esc(t)}')">${esc(t)}</button>`).join('') + syncAllBtn;
 
   const searchRow = document.getElementById('search-bar-row');
-  if(searchRow) searchRow.innerHTML = `<div style="display:flex;gap:12px;align-items:center;width:100%;"><input class="search-input" type="text" id="search-input" placeholder="Search name, date, or time…" value="${esc(searchQuery)}" oninput="setSearch(this.value)" style="flex:1;"/><button class="btn btn-sm" onclick="toggleSelectMode()" style="gap:5px;flex-shrink:0;"><svg class="icon sm" viewBox="0 0 24 24"><rect x="3" y="5" width="4" height="4" rx="1"/><rect x="3" y="11" width="4" height="4" rx="1"/><rect x="3" y="17" width="4" height="4" rx="1"/><line x1="10" y1="7" x2="21" y2="7"/><line x1="10" y1="13" x2="21" y2="13"/><line x1="10" y1="19" x2="21" y2="19"/></svg>Select</button></div>`;
+  if(searchRow) searchRow.innerHTML = `<input class="search-input" type="text" id="search-input" placeholder="Search name, date, or time…" value="${esc(searchQuery)}" oninput="setSearch(this.value)"/>`;
 
   // Update archive count badge
   const archiveBadge = document.getElementById('archive-count');
   if(archiveBadge) archiveBadge.textContent = '';
 
-  let filtered = sorted(source);
-  if(selectedTypeFilters.length > 0){
-    filtered = filtered.filter(e => selectedTypeFilters.includes(e.type));
-  }
+  const filtered = filterType==='All' ? sorted(source) : sorted(source).filter(e=>e.type===filterType);
   const shown = filtered.filter(e => matchesSearch(e, searchQuery));
   document.getElementById('entry-count').textContent = shown.length;
   const list = document.getElementById('entries-list');
@@ -1904,27 +1903,6 @@ function fmtTime(t){
 }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function setFilter(t){ filterType=t; render(); }
-function addTypeFilter(t){
-  if(!selectedTypeFilters.includes(t)){
-    selectedTypeFilters.push(t);
-    localStorage.setItem('wl2_selected_type_filters', JSON.stringify(selectedTypeFilters));
-    render();
-  }
-}
-function removeTypeFilter(t){
-  selectedTypeFilters = selectedTypeFilters.filter(x => x !== t);
-  localStorage.setItem('wl2_selected_type_filters', JSON.stringify(selectedTypeFilters));
-  render();
-}
-function clearTypeFilters(){
-  selectedTypeFilters = [];
-  localStorage.setItem('wl2_selected_type_filters', JSON.stringify(selectedTypeFilters));
-  render();
-}
-function toggleTypeFilterDropdown(){
-  const menu = document.getElementById('type-filter-dropdown-menu');
-  if(menu) menu.classList.toggle('open');
-}
 function setSortAndRender(v){ sortMode=v; pinnedId=null; render(); }
 
 function setSearch(q){
@@ -2627,7 +2605,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.4.8', date: 'July 2026', latest: true,
+    version: 'v1.4.9', date: 'July 2026', latest: true,
+    items: [
+      'Summary stat cards added above filter bar — displays All Task, Entries, Archive, Today (due today + in progress), and Overdue counts at a glance'
+    ]
+  },
+  {
+    version: 'v1.4.8', date: 'July 2026', latest: false,
     items: [
       'Summary stat cards added to the filter bar — displays Overdue, Today, and Soon entry counts at a glance'
     ]
