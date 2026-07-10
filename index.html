@@ -157,11 +157,10 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 .settings-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px;}
 .settings-section h3{font-size:13px;font-weight:500;margin-bottom:4px;}
 .settings-section .desc{font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.6;}
-.type-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);transition:background .15s;}
+.type-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);transition:background .15s;cursor:grab;}
 .type-row:last-child{border-bottom:none;}
-.type-row[draggable="true"]{cursor:grab;}
-.type-row[draggable="true"]:active{cursor:grabbing;}
-.type-row[draggable="true"]:hover{background:rgba(0,0,0,.02);}
+.type-row:active{cursor:grabbing;}
+.type-row:hover{background:rgba(0,0,0,.02);}
 .type-color-swatch{width:22px;height:22px;border-radius:5px;border:1px solid var(--border);flex-shrink:0;cursor:pointer;}
 .type-label{flex:1;font-size:13px;}
 .type-gcal-select{font-size:12px;padding:3px 22px 3px 7px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);}
@@ -301,7 +300,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.4.6</span></div>
+    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.4.7</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -758,11 +757,19 @@ function buildGTaskTitle(entry){
 }
 let customTypes = JSON.parse(localStorage.getItem('wl2_custom_types') || '[]');
 let customTypeOrder = JSON.parse(localStorage.getItem('wl2_custom_type_order') || '[]');
+let typeOrder = JSON.parse(localStorage.getItem('wl2_type_order') || '[]');
 let typeColors = JSON.parse(localStorage.getItem('wl2_type_colors') || '{}');
 let typeGCalIds = JSON.parse(localStorage.getItem('wl2_type_gcal_ids') || '{}');
 let uiColors = JSON.parse(localStorage.getItem('wl2_ui_colors') || '{}');
 
 function allTypes(){
+  if(typeOrder.length > 0){
+    // Use the custom type order if it exists
+    return typeOrder.filter(t => BUILTIN_TYPES.includes(t) || customTypes.includes(t))
+      .concat(BUILTIN_TYPES.filter(t => !typeOrder.includes(t)))
+      .concat(customTypes.filter(t => !typeOrder.includes(t)));
+  }
+  // Fallback to original order
   const builtins = [...BUILTIN_TYPES];
   const customs = customTypeOrder.length > 0
     ? customTypeOrder.filter(t => customTypes.includes(t)).concat(customTypes.filter(t => !customTypeOrder.includes(t)))
@@ -2272,8 +2279,8 @@ function buildSettingsUI(){
     const gcalId = typeGCalIds[t] || '';
     const gcalOpts = GCAL_COLOR_OPTIONS.map(o=>`<option value="${o.id}"${gcalId===o.id?' selected':''}>${esc(o.label)}</option>`).join('');
     const gcalColor = GCAL_COLOR_MAP[gcalId] || 'transparent';
-    const dragHandle = !isBuiltin ? `<div style="cursor:grab;padding:4px;margin-right:4px;color:var(--text3);">☰</div>` : '';
-    return `<div class="type-row" id="type-row-${esc(t)}" ${!isBuiltin?'draggable="true"':''}>
+    const dragHandle = `<div style="cursor:grab;padding:4px;margin-right:4px;color:var(--text3);">☰</div>`;
+    return `<div class="type-row" id="type-row-${esc(t)}" draggable="true">
       ${dragHandle}
       <div class="color-input-wrap" style="gap:4px;">
         <input type="color" id="tc-color-${esc(t)}" value="${color}" oninput="document.getElementById('tc-hex-${esc(t)}').value=this.value;" onchange="syncTypeColorHex('${esc(t)}')">
@@ -2285,12 +2292,12 @@ function buildSettingsUI(){
         <div class="gcal-color-swatch" id="tc-swatch-${esc(t)}" style="width:18px;height:18px;border-radius:4px;border:1px solid var(--border);background:${gcalColor};${gcalId?'':'opacity:.3;'}"></div>
         <span id="tc-name-${esc(t)}" style="font-size:11px;color:var(--text2);min-width:60px;">${GCAL_COLOR_NAMES[gcalId] || ''}</span>
       </div>
-      ${isBuiltin?'<span style="width:26px;"></span>':`<button class="icon-btn del" onclick="removeCustomType('${esc(t)}')" title="Remove type" style="width:26px;">${trashIcon()}</button>`}
+      <button class="icon-btn del" onclick="removeType('${esc(t)}')" title="Remove type" style="width:26px;">${trashIcon()}</button>
     </div>`;
   }).join('');
 
-  // Add drag event handlers for custom types
-  document.querySelectorAll('.type-row[draggable="true"]').forEach(el => {
+  // Add drag event handlers for all types
+  document.querySelectorAll('.type-row').forEach(el => {
     el.addEventListener('dragstart', handleTypeRowDragStart);
     el.addEventListener('dragover', handleTypeRowDragOver);
     el.addEventListener('drop', handleTypeRowDrop);
@@ -2316,6 +2323,9 @@ function buildSettingsUI(){
       previewUIColors();
     };
   });
+
+  // Update type dropdown to reflect custom order
+  populateTypeSelects();
 }
 
 let draggedTypeRow = null;
@@ -2349,13 +2359,17 @@ function handleTypeRowDragEnd(e){
 }
 
 function reorderCustomTypes(fromType, toType){
-  if(!customTypeOrder.includes(fromType)) customTypeOrder.push(fromType);
-  if(!customTypeOrder.includes(toType)) customTypeOrder.push(toType);
-  const fromIdx = customTypeOrder.indexOf(fromType);
-  const toIdx = customTypeOrder.indexOf(toType);
-  customTypeOrder.splice(fromIdx, 1);
-  customTypeOrder.splice(toIdx > fromIdx ? toIdx - 1 : toIdx, 0, fromType);
-  localStorage.setItem('wl2_custom_type_order', JSON.stringify(customTypeOrder));
+  // Initialize typeOrder with current order if empty
+  if(typeOrder.length === 0){
+    typeOrder = allTypes();
+  }
+  if(!typeOrder.includes(fromType)) typeOrder.push(fromType);
+  if(!typeOrder.includes(toType)) typeOrder.push(toType);
+  const fromIdx = typeOrder.indexOf(fromType);
+  const toIdx = typeOrder.indexOf(toType);
+  typeOrder.splice(fromIdx, 1);
+  typeOrder.splice(toIdx > fromIdx ? toIdx - 1 : toIdx, 0, fromType);
+  localStorage.setItem('wl2_type_order', JSON.stringify(typeOrder));
   buildSettingsUI();
 }
 
@@ -2423,15 +2437,36 @@ function addCustomType(){
   toast(`Type "${name}" added.`);
 }
 
-function removeCustomType(name){
+function removeType(name){
   if(!confirm(`Remove type "${name}"? Entries with this type will keep their value.`)) return;
-  customTypes = customTypes.filter(t=>t!==name);
+  const isBuiltin = BUILTIN_TYPES.includes(name);
+  if(isBuiltin){
+    // Remove from BUILTIN_TYPES by filtering it out
+    const idx = BUILTIN_TYPES.indexOf(name);
+    if(idx > -1) BUILTIN_TYPES.splice(idx, 1);
+  } else {
+    // Remove custom type
+    customTypes = customTypes.filter(t=>t!==name);
+  }
+  // Always remove from order arrays
   customTypeOrder = customTypeOrder.filter(t=>t!==name);
+  typeOrder = typeOrder.filter(t=>t!==name);
+  // Remove color and gcal settings
+  delete typeColors[name];
+  delete typeGCalIds[name];
   localStorage.setItem('wl2_custom_types', JSON.stringify(customTypes));
   localStorage.setItem('wl2_custom_type_order', JSON.stringify(customTypeOrder));
+  localStorage.setItem('wl2_type_order', JSON.stringify(typeOrder));
+  localStorage.setItem('wl2_type_colors', JSON.stringify(typeColors));
+  localStorage.setItem('wl2_type_gcal_ids', JSON.stringify(typeGCalIds));
   buildSettingsUI();
   populateTypeSelects();
   toast(`Type "${name}" removed.`);
+}
+
+function removeCustomType(name){
+  // Backward compatibility - calls the new removeType function
+  removeType(name);
 }
 
 function saveSettings(){
@@ -2464,7 +2499,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.4.6', date: 'July 2026', latest: true,
+    version: 'v1.4.7', date: 'July 2026', latest: true,
+    items: [
+      'Custom task types can now be dragged to reorder in Settings — drag handles appear on custom types, built-in types remain fixed'
+    ]
+  },
+  {
+    version: 'v1.4.6', date: 'July 2026', latest: false,
     items: [
       'Fix: sorting now automatically resets when toggling between entries and archive views — entries view defaults to descending (newest first), archive defaults to ascending (oldest first)'
     ]
