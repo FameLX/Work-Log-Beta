@@ -287,7 +287,7 @@ svg.icon.sm{width:13px;height:13px;}
 .repeat-modal-actions{display:flex;gap:8px;justify-content:flex-end;}
 
 /* Stat Cards */
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;display:flex;flex-direction:column;gap:8px;min-width:140px;text-align:center;box-shadow:var(--shadow);}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 14px;display:flex;flex-direction:column;gap:8px;min-width:136px;text-align:center;box-shadow:var(--shadow);}
 .stat-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);}
 .stat-value{font-size:20px;font-weight:600;color:var(--text);}
 
@@ -459,6 +459,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- MAIN: Entries -->
   <main class="main">
+    <div id="stat-cards-row" style="display:none;"></div>
     <div class="main-header">
       <h1 id="main-title">Entries</h1>
       <span class="entry-count" id="entry-count">0</span>
@@ -481,7 +482,6 @@ svg.icon.sm{width:13px;height:13px;}
         <svg class="icon sm" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
       </button>
     </div>
-    <div id="stat-cards-row" style="display:none;"></div>
     <div class="bulk-bar" id="bulk-bar">
       <span id="bulk-count">0 selected</span>
       <div style="flex:1;"></div>
