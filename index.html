@@ -151,6 +151,8 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 /* Settings overlay */
 .settings-overlay{position:fixed;inset:0;background:var(--bg);z-index:150;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
 .settings-overlay.open{transform:translateX(0);}
+body.no-scroll{overflow:hidden;}
+#settings-unsaved-modal{z-index:200;}
 .settings-topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;padding:0 24px;flex-shrink:0;}
 .settings-topbar h2{font-size:15px;font-weight:500;flex:1;}
 .settings-body{flex:1;overflow-y:auto;padding:32px 24px;max-width:720px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:32px;}
@@ -306,7 +308,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.5.1</span></div>
+    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.5.2</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -682,6 +684,18 @@ svg.icon.sm{width:13px;height:13px;}
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- Settings Unsaved Changes Modal -->
+<div class="modal-overlay" id="settings-unsaved-modal">
+  <div class="modal" style="max-width:380px;width:calc(100vw - 32px);height:auto;padding:28px;text-align:center;">
+    <h2 style="margin-bottom:8px;">Unsaved changes</h2>
+    <p style="margin-bottom:20px;">You have unsaved changes in Settings. Do you want to save them before leaving?</p>
+    <div class="modal-actions" style="justify-content:center;gap:8px;">
+      <button class="btn" onclick="discardSettingsChanges()">No, discard</button>
+      <button class="btn btn-primary" onclick="saveAndCloseSettings()">Yes, save changes</button>
+    </div>
   </div>
 </div>
 
@@ -2362,11 +2376,59 @@ var GCAL_COLOR_NAMES = {
   '6':'Tangerine','7':'Peacock','8':'Graphite','9':'Blueberry','10':'Basil','11':'Tomato'
 };
 
+let settingsSnapshot = null;
+let settingsDirty = false;
+
 function openSettings(){
+  settingsSnapshot = {
+    customTypes: [...customTypes],
+    typeOrder: [...typeOrder],
+    customTypeOrder: [...customTypeOrder],
+    typeColors: {...typeColors},
+    typeGCalIds: {...typeGCalIds},
+    uiColors: {...uiColors},
+    builtinTypes: [...BUILTIN_TYPES]
+  };
+  settingsDirty = false;
   buildSettingsUI();
   document.getElementById('settings-overlay').classList.add('open');
+  document.body.classList.add('no-scroll');
 }
-function closeSettings(){ document.getElementById('settings-overlay').classList.remove('open'); }
+function closeSettingsForce(){
+  document.getElementById('settings-overlay').classList.remove('open');
+  document.body.classList.remove('no-scroll');
+}
+function closeSettings(){
+  if(settingsDirty){
+    document.getElementById('settings-unsaved-modal').classList.add('open');
+    return;
+  }
+  closeSettingsForce();
+}
+function cancelUnsavedPrompt(){
+  document.getElementById('settings-unsaved-modal').classList.remove('open');
+}
+function discardSettingsChanges(){
+  customTypes = [...settingsSnapshot.customTypes];
+  typeOrder = [...settingsSnapshot.typeOrder];
+  customTypeOrder = [...settingsSnapshot.customTypeOrder];
+  typeColors = {...settingsSnapshot.typeColors};
+  typeGCalIds = {...settingsSnapshot.typeGCalIds};
+  uiColors = {...settingsSnapshot.uiColors};
+  BUILTIN_TYPES.length = 0;
+  BUILTIN_TYPES.push(...settingsSnapshot.builtinTypes);
+  applyUIColors();
+  populateTypeSelects();
+  render();
+  settingsDirty = false;
+  document.getElementById('settings-unsaved-modal').classList.remove('open');
+  closeSettingsForce();
+  toast('Changes discarded.');
+}
+function saveAndCloseSettings(){
+  document.getElementById('settings-unsaved-modal').classList.remove('open');
+  saveSettings();
+}
 
 function updateGCalColorPreview(type){
   const select = document.getElementById('tc-gcal-'+type);
@@ -2378,7 +2440,7 @@ function updateGCalColorPreview(type){
   swatch.style.opacity = gcalId ? '1' : '0.3';
   if(nameLabel) nameLabel.textContent = GCAL_COLOR_NAMES[gcalId] || '';
   typeGCalIds[type] = gcalId;
-  save();
+  settingsDirty = true;
 }
 
 function buildSettingsUI(){
@@ -2395,7 +2457,7 @@ function buildSettingsUI(){
       ${dragHandle}
       <div class="color-input-wrap" style="gap:4px;">
         <input type="color" id="tc-color-${esc(t)}" value="${color}" oninput="document.getElementById('tc-hex-${esc(t)}').value=this.value;" onchange="syncTypeColorHex('${esc(t)}')">
-        <input type="text" id="tc-hex-${esc(t)}" value="${color}" style="width:78px;font-size:11px;" oninput="(function(v,id){if(/^#[0-9a-fA-F]{6}$/.test(v))document.getElementById('tc-color-'+id).value=v;})( this.value,'${esc(t)}'  )">
+        <input type="text" id="tc-hex-${esc(t)}" value="${color}" style="width:78px;font-size:11px;" oninput="settingsDirty=true;(function(v,id){if(/^#[0-9a-fA-F]{6}$/.test(v))document.getElementById('tc-color-'+id).value=v;})( this.value,'${esc(t)}'  )">
       </div>
       <span class="type-label">${esc(t)}${isBuiltin?'':' <span style="font-size:10px;color:var(--text3);">(custom)</span>'}</span>
       <select class="type-gcal-select" id="tc-gcal-${esc(t)}" onchange="updateGCalColorPreview('${esc(t)}')">${gcalOpts}</select>
@@ -2434,9 +2496,6 @@ function buildSettingsUI(){
       previewUIColors();
     };
   });
-
-  // Update type dropdown to reflect custom order
-  populateTypeSelects();
 }
 
 let draggedTypeRow = null;
@@ -2480,11 +2539,12 @@ function reorderCustomTypes(fromType, toType){
   const toIdx = typeOrder.indexOf(toType);
   typeOrder.splice(fromIdx, 1);
   typeOrder.splice(toIdx > fromIdx ? toIdx - 1 : toIdx, 0, fromType);
-  localStorage.setItem('wl2_type_order', JSON.stringify(typeOrder));
+  settingsDirty = true;
   buildSettingsUI();
 }
 
 function syncTypeColorHex(type){
+  settingsDirty = true;
   const colorEl = document.getElementById('tc-color-'+type);
   const hexEl = document.getElementById('tc-hex-'+type);
   if(colorEl && hexEl) hexEl.value = colorEl.value;
@@ -2501,6 +2561,7 @@ function syncColorFromHex(colorId, hexId, reverse=false){
 }
 
 function previewUIColors(){
+  settingsDirty = true;
   const accent = document.getElementById('ui-accent-color')?.value;
   const bg = document.getElementById('ui-bg-color')?.value;
   const surface = document.getElementById('ui-surface-color')?.value;
@@ -2518,6 +2579,7 @@ function applyUIColors(){
 }
 
 function resetUIColors(){
+  settingsDirty = true;
   const root = document.documentElement;
   root.style.removeProperty('--text');
   root.style.removeProperty('--text2');
@@ -2541,10 +2603,9 @@ function addCustomType(){
   if(!name){ toast('Enter a type name.'); return; }
   if(allTypes().map(t=>t.toLowerCase()).includes(name.toLowerCase())){ toast('Type already exists.'); return; }
   customTypes.push(name);
-  localStorage.setItem('wl2_custom_types', JSON.stringify(customTypes));
+  settingsDirty = true;
   input.value = '';
   buildSettingsUI();
-  populateTypeSelects();
   toast(`Type "${name}" added.`);
 }
 
@@ -2565,13 +2626,8 @@ function removeType(name){
   // Remove color and gcal settings
   delete typeColors[name];
   delete typeGCalIds[name];
-  localStorage.setItem('wl2_custom_types', JSON.stringify(customTypes));
-  localStorage.setItem('wl2_custom_type_order', JSON.stringify(customTypeOrder));
-  localStorage.setItem('wl2_type_order', JSON.stringify(typeOrder));
-  localStorage.setItem('wl2_type_colors', JSON.stringify(typeColors));
-  localStorage.setItem('wl2_type_gcal_ids', JSON.stringify(typeGCalIds));
+  settingsDirty = true;
   buildSettingsUI();
-  populateTypeSelects();
   toast(`Type "${name}" removed.`);
 }
 
@@ -2593,6 +2649,9 @@ function saveSettings(){
   });
   localStorage.setItem('wl2_type_colors', JSON.stringify(typeColors));
   localStorage.setItem('wl2_type_gcal_ids', JSON.stringify(typeGCalIds));
+  localStorage.setItem('wl2_custom_types', JSON.stringify(customTypes));
+  localStorage.setItem('wl2_custom_type_order', JSON.stringify(customTypeOrder));
+  localStorage.setItem('wl2_type_order', JSON.stringify(typeOrder));
 
   // UI colors
   uiColors = {
@@ -2602,7 +2661,10 @@ function saveSettings(){
   };
   localStorage.setItem('wl2_ui_colors', JSON.stringify(uiColors));
   applyUIColors();
-  closeSettings();
+  settingsDirty = false;
+  document.getElementById('settings-unsaved-modal').classList.remove('open');
+  closeSettingsForce();
+  populateTypeSelects();
   render();
   toast('Settings saved.');
 }
@@ -2610,7 +2672,15 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.5.1', date: 'July 2026', latest: true,
+    version: 'v1.5.2', date: 'July 2026', latest: true,
+    items: [
+      'Settings changes are now a draft until you click "Save changes" — edits to task types, colours, and interface theme no longer apply live; closing without saving reverts everything',
+      'Leaving Settings with unsaved changes now prompts to save or discard instead of silently losing or keeping them',
+      'Fixed a background scrollbar appearing behind the Settings panel — the page behind Settings no longer scrolls independently'
+    ]
+  },
+  {
+    version: 'v1.5.1', date: 'July 2026', latest: false,
     items: [
       'Multi-select task type filtering — click multiple type chips to filter by several types at once, instead of only one at a time'
     ]
@@ -2877,6 +2947,9 @@ function closeCreatorModal(){
 }
 document.getElementById('creator-modal')?.addEventListener('click', (e) => {
   if(e.target.id === 'creator-modal') closeCreatorModal();
+});
+document.getElementById('settings-unsaved-modal')?.addEventListener('click', (e) => {
+  if(e.target.id === 'settings-unsaved-modal') cancelUnsavedPrompt();
 });
 document.addEventListener('keydown', (e) => {
   if(e.key === 'Escape' && document.getElementById('creator-modal').classList.contains('open')){
