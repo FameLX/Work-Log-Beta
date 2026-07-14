@@ -299,7 +299,7 @@ textarea{resize:vertical;min-height:90px;line-height:1.5;}
 @keyframes modalPop{from{transform:scale(.8);opacity:0;}to{transform:scale(1);opacity:1;}}
 
 /* Toast */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:9px 18px;border-radius:var(--radius);font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.15);opacity:0;transition:all .25s;pointer-events:none;z-index:200;white-space:nowrap;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--accent);color:var(--accent-text);padding:9px 18px;border-radius:var(--radius);font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.15);opacity:0;transition:all .25s;pointer-events:none;z-index:200;white-space:nowrap;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* Sort bar */
@@ -706,7 +706,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.6.2</span></div>
+    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.6.3</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -1179,7 +1179,7 @@ svg.icon.sm{width:13px;height:13px;}
 (function migrateToDevNamespace(){
   if(localStorage.getItem('wl2dev_migrated')) return;
   const oldKeys = [
-    'wl2_ai_key','wl2_ai_model','wl2_archived','wl2_current_theme','wl2_custom_type_order',
+    'wl2_archived','wl2_current_theme','wl2_custom_type_order',
     'wl2_custom_types','wl2_entries','wl2_gcal_client_id','wl2_gcal_token','wl2_saved_themes',
     'wl2_trash','wl2_type_colors','wl2_type_gcal_ids','wl2_type_order'
   ];
@@ -1255,6 +1255,13 @@ function allTypes(){
 }
 
 // ── OAuth token auto-capture ───────────────────────────────────────────────
+// Cross-window OAuth relay tag. NOT a localStorage key — do not rename this
+// per-environment. The OAuth popup's redirect_uri is hardcoded to the
+// production URL (see gcalAuthorise), so the popup always runs PRODUCTION's
+// deployed code, which always sends this exact string. If this ever diverges
+// from production's copy, "Connect Google Calendar" silently breaks here.
+const GCAL_OAUTH_MESSAGE_TYPE = 'wl2_gcal_token';
+
 // If this page load is the OAuth popup (URL has #access_token=...), grab the
 // token, hand it back to the window that opened us, then close.
 (function captureOAuthRedirect(){
@@ -1262,7 +1269,7 @@ function allTypes(){
     const params = new URLSearchParams(location.hash.slice(1));
     const token = params.get('access_token');
     if(token && window.opener){
-      try{ window.opener.postMessage({type:'wl2dev_gcal_token', token}, location.origin); }catch(e){}
+      try{ window.opener.postMessage({type:GCAL_OAUTH_MESSAGE_TYPE, token}, location.origin); }catch(e){}
       // Clean the token out of the address bar then close the popup.
       history.replaceState(null,'',location.pathname + location.search);
       window.close();
@@ -1273,7 +1280,7 @@ function allTypes(){
 // Main-window listener: receive the token the popup sent and connect.
 window.addEventListener('message', function(ev){
   if(ev.origin !== location.origin) return;
-  if(ev.data && ev.data.type==='wl2dev_gcal_token' && ev.data.token){
+  if(ev.data && ev.data.type===GCAL_OAUTH_MESSAGE_TYPE && ev.data.token){
     gcalApplyToken(ev.data.token);
   }
 });
@@ -3076,7 +3083,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.6.2', date: 'July 2026', latest: true,
+    version: 'v1.6.3', date: 'July 2026', latest: true,
+    items: [
+      'Fix: the toast notification (e.g. "Settings saved.") used the page text colour as its background, which would render nearly invisible on the Twilight Sky and Neon Twilight themes -- it now uses the theme\'s accent colour pairing instead, the same guaranteed-contrast pair used by primary buttons, so it stays readable on every theme including custom ones'
+    ]
+  },
+  {
+    version: 'v1.6.2', date: 'July 2026', latest: false,
     items: [
       'AI Assistant upgraded — now runs on a much stronger model (GPT-OSS-120B) via a secure proxy, so you no longer need to paste your own API key. It can take real actions with reliable tool-calling (add, edit, delete, archive, restore), do several at once, and remembers the conversation for follow-ups',
       'Fix: theme changes now preview live when you click them but require Save to keep — leaving Settings with an unsaved theme prompts you to save or discard, matching the rest of Settings'
