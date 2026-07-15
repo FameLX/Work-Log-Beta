@@ -83,8 +83,8 @@
   --text3: #B8A3A0;
   --accent: #C05C6F;
   --accent-text: #FFFFFF;
-  --success: #7B5C5C;
-  --success-bg: #E8D5D1;
+  --success: #5C7B5C;
+  --success-bg: #D9E5D2;
   --warn: #C4844C;
   --warn-bg: #F5E3D0;
   --danger: #A85A5A;
@@ -167,8 +167,8 @@
   --text3: #948C7A;
   --accent: #A87860;
   --accent-text: #FFFFFF;
-  --success: #616F5F;
-  --success-bg: #DCE3D8;
+  --success: #4A6B47;
+  --success-bg: #C9DBC0;
   --warn: #B07A3F;
   --warn-bg: #F1E4CD;
   --danger: #634A50;
@@ -706,7 +706,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.6.4</span></div>
+    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.6.5</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -3088,7 +3088,13 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.6.4', date: 'July 2026', latest: true,
+    version: 'v1.6.5', date: 'July 2026', latest: true,
+    items: [
+      'Fix: the Woodland and Dusty Pink themes\' "success" colour (used for the Archive button, connected-calendar pill, Sync All, and several other spots) was so pale it was nearly indistinguishable from the surrounding card and border colours -- both themes now use a clearly green success colour while keeping their muted look'
+    ]
+  },
+  {
+    version: 'v1.6.4', date: 'July 2026', latest: false,
     items: [
       'Fix: task type chips in the "Tasks Needing Attention" modal were plain grey, ignoring your custom type colours -- they now match the colour-coded chips used everywhere else'
     ]
