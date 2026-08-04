@@ -706,7 +706,7 @@ svg.icon.sm{width:13px;height:13px;}
 
   <!-- TOPBAR -->
   <header class="topbar">
-    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.7.2</span></div>
+    <div class="topbar-logo" id="topbar-logo-egg" onclick="easterEggClick()" style="display:flex;align-items:center;gap:8px;cursor:default;user-select:none;"><img src="ce-logo.png" alt="Carrier Engagement" style="height:32px;width:auto;display:block;"/>Work Log DEV <span id="version-pill" onclick="openChangelog()" style="cursor:pointer;text-decoration:none;user-select:none;" title="View changelog">/ v1.6.13</span></div>
     <div class="topbar-spacer"></div>
     <button class="gcal-pill" id="gcal-pill" onclick="openGCalModal()">
       <div class="gcal-dot"></div>
@@ -1186,12 +1186,31 @@ svg.icon.sm{width:13px;height:13px;}
 <div class="toast" id="toast"></div>
 
 <script>
-
+// ── One-time migration: dev/beta used to share the 'wl2_' keys with
+// production (same GitHub Pages origin). Copy any old shared data into the
+// new 'wl2dev_' namespace once, without touching or deleting the old keys —
+// production keeps reading 'wl2_' untouched.
+(function migrateToDevNamespace(){
+  if(localStorage.getItem('wl2dev_migrated')) return;
+  const oldKeys = [
+    'wl2_archived','wl2_current_theme','wl2_custom_type_order',
+    'wl2_custom_types','wl2_entries','wl2_gcal_client_id','wl2_gcal_token','wl2_saved_themes',
+    'wl2_trash','wl2_type_colors','wl2_type_gcal_ids','wl2_type_order'
+  ];
+  oldKeys.forEach(oldKey => {
+    const newKey = oldKey.replace('wl2_', 'wl2dev_');
+    if(localStorage.getItem(newKey) === null){
+      const oldVal = localStorage.getItem(oldKey);
+      if(oldVal !== null) localStorage.setItem(newKey, oldVal);
+    }
+  });
+  localStorage.setItem('wl2dev_migrated', '1');
+})();
 
 // ── State ──────────────────────────────────────────────────────────────────
-let entries = JSON.parse(localStorage.getItem('wl2_entries') || '[]');
-let archived = JSON.parse(localStorage.getItem('wl2_archived') || '[]');
-let trash = JSON.parse(localStorage.getItem('wl2_trash') || '[]');
+let entries = JSON.parse(localStorage.getItem('wl2dev_entries') || '[]');
+let archived = JSON.parse(localStorage.getItem('wl2dev_archived') || '[]');
+let trash = JSON.parse(localStorage.getItem('wl2dev_trash') || '[]');
 // Migration: add updated field to old entries that don't have it
 entries.forEach(e => { if(!e.updated) e.updated = e.created; });
 archived.forEach(e => { if(!e.updated) e.updated = e.created; });
@@ -1202,12 +1221,12 @@ trash.forEach(e => { if(!e.deletedAt && e.trashedAt){ e.deletedAt = e.trashedAt;
   const cutoff = Date.now() - 5*86400000;
   const before = trash.length;
   trash = trash.filter(e => new Date(e.deletedAt).getTime() > cutoff);
-  if(trash.length !== before) localStorage.setItem('wl2_trash', JSON.stringify(trash));
+  if(trash.length !== before) localStorage.setItem('wl2dev_trash', JSON.stringify(trash));
 })();
 let viewMode = 'active'; // 'active' or 'archive'
 let searchQuery = '';
-let gcalToken = localStorage.getItem('wl2_gcal_token') || null;
-let gcalClientId = localStorage.getItem('wl2_gcal_client_id') || '';
+let gcalToken = localStorage.getItem('wl2dev_gcal_token') || null;
+let gcalClientId = localStorage.getItem('wl2dev_gcal_client_id') || '';
 let selectedFilterTypes = []; // empty = All
 let sortMode = 'deadline';
 let sortDir = 'desc'; // deadline default: furthest first
@@ -1228,11 +1247,11 @@ function fmtTime12(t){
 function buildGTaskTitle(entry){
   return entry.time ? `${fmtTime12(entry.time)} | ${entry.name}` : entry.name;
 }
-let customTypes = JSON.parse(localStorage.getItem('wl2_custom_types') || '[]');
-let customTypeOrder = JSON.parse(localStorage.getItem('wl2_custom_type_order') || '[]');
-let typeOrder = JSON.parse(localStorage.getItem('wl2_type_order') || '[]');
-let typeColors = JSON.parse(localStorage.getItem('wl2_type_colors') || '{}');
-let typeGCalIds = JSON.parse(localStorage.getItem('wl2_type_gcal_ids') || '{}');
+let customTypes = JSON.parse(localStorage.getItem('wl2dev_custom_types') || '[]');
+let customTypeOrder = JSON.parse(localStorage.getItem('wl2dev_custom_type_order') || '[]');
+let typeOrder = JSON.parse(localStorage.getItem('wl2dev_type_order') || '[]');
+let typeColors = JSON.parse(localStorage.getItem('wl2dev_type_colors') || '{}');
+let typeGCalIds = JSON.parse(localStorage.getItem('wl2dev_type_gcal_ids') || '{}');
 
 function allTypes(){
   if(typeOrder.length > 0){
@@ -1480,10 +1499,10 @@ function saveEdit(id){
 }
 
 function save(){
-  localStorage.setItem('wl2_entries', JSON.stringify(entries));
-  localStorage.setItem('wl2_archived', JSON.stringify(archived));
+  localStorage.setItem('wl2dev_entries', JSON.stringify(entries));
+  localStorage.setItem('wl2dev_archived', JSON.stringify(archived));
 }
-function saveTrash(){ localStorage.setItem('wl2_trash', JSON.stringify(trash)); }
+function saveTrash(){ localStorage.setItem('wl2dev_trash', JSON.stringify(trash)); }
 
 function archiveEntry(id){
   const e = entries.find(x=>x.id===id); if(!e) return;
@@ -2744,7 +2763,7 @@ function closeGCalModal(){ document.getElementById('gcal-modal').classList.remov
 
 function gcalDisconnect(){
   gcalToken = null;
-  localStorage.removeItem('wl2_gcal_token');
+  localStorage.removeItem('wl2dev_gcal_token');
   clearGCalExpired();
   document.getElementById('gcal-pill').classList.remove('connected');
   document.getElementById('gcal-pill-text').textContent = 'Connect Google Calendar';
@@ -2758,7 +2777,7 @@ function gcalAuthorise(){
   const cidInput = document.getElementById('gcal-client-id');
   const cid = (cidInput.offsetParent !== null ? cidInput.value.trim() : '') || gcalClientId;
   if(!cid){ toast('Paste your Client ID first.'); document.getElementById('gcal-setup-section').style.display='block'; document.getElementById('gcal-connected-section').style.display='none'; return; }
-  gcalClientId = cid; localStorage.setItem('wl2_gcal_client_id', cid);
+  gcalClientId = cid; localStorage.setItem('wl2dev_gcal_client_id', cid);
   const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks');
   const redirect = encodeURIComponent('https://famelx.github.io/Work-Log/');
   window.open(`https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(cid)}&redirect_uri=${redirect}&response_type=token&scope=${scope}&prompt=consent`,'gcal_oauth','width=520,height=620');
@@ -2779,7 +2798,7 @@ function gcalSaveToken(){
 // Shared: store the token and flip the UI to connected. Called both by the
 // automatic postMessage capture and by the manual-paste fallback.
 function gcalApplyToken(t){
-  gcalToken=t; localStorage.setItem('wl2_gcal_token',t);
+  gcalToken=t; localStorage.setItem('wl2dev_gcal_token',t);
   clearGCalExpired();
   document.getElementById('gcal-pill').classList.add('connected');
   document.getElementById('gcal-pill-text').textContent='Calendar connected';
@@ -3022,7 +3041,7 @@ let settingsSnapshot = null;
 let settingsDirty = false;
 let pendingTheme = null;         // previewed-but-uncommitted theme while Settings is open
 let pendingCustomEdited = false; // user tweaked individual colours (a custom look)
-function activeThemeName(){ return pendingTheme !== null ? pendingTheme : (localStorage.getItem('wl2_current_theme') || 'default'); }
+function activeThemeName(){ return pendingTheme !== null ? pendingTheme : (localStorage.getItem('wl2dev_current_theme') || 'default'); }
 
 function openSettings(){
   settingsSnapshot = {
@@ -3035,7 +3054,7 @@ function openSettings(){
     savedThemes: JSON.stringify(savedThemes)
   };
   settingsDirty = false;
-  pendingTheme = localStorage.getItem('wl2_current_theme') || 'default';
+  pendingTheme = localStorage.getItem('wl2dev_current_theme') || 'default';
   pendingCustomEdited = false;
   buildSettingsUI();
   document.getElementById('settings-overlay').classList.add('open');
@@ -3064,7 +3083,7 @@ function discardSettingsChanges(){
   BUILTIN_TYPES.length = 0;
   BUILTIN_TYPES.push(...settingsSnapshot.builtinTypes);
   savedThemes = JSON.parse(settingsSnapshot.savedThemes);
-  localStorage.setItem('wl2_saved_themes', JSON.stringify(savedThemes));
+  localStorage.setItem('wl2dev_saved_themes', JSON.stringify(savedThemes));
   pendingTheme = null; pendingCustomEdited = false;
   loadTheme();
   populateTypeSelects();
@@ -3236,19 +3255,19 @@ function saveSettings(){
     }
     if(gcalEl) typeGCalIds[t] = gcalEl.value;
   });
-  localStorage.setItem('wl2_type_colors', JSON.stringify(typeColors));
-  localStorage.setItem('wl2_type_gcal_ids', JSON.stringify(typeGCalIds));
-  localStorage.setItem('wl2_custom_types', JSON.stringify(customTypes));
-  localStorage.setItem('wl2_custom_type_order', JSON.stringify(customTypeOrder));
-  localStorage.setItem('wl2_type_order', JSON.stringify(typeOrder));
+  localStorage.setItem('wl2dev_type_colors', JSON.stringify(typeColors));
+  localStorage.setItem('wl2dev_type_gcal_ids', JSON.stringify(typeGCalIds));
+  localStorage.setItem('wl2dev_custom_types', JSON.stringify(customTypes));
+  localStorage.setItem('wl2dev_custom_type_order', JSON.stringify(customTypeOrder));
+  localStorage.setItem('wl2dev_type_order', JSON.stringify(typeOrder));
 
   // Commit the previewed theme (deferred until Save)
   if(pendingCustomEdited){
-    localStorage.setItem('wl2_current_theme', 'custom');
-    localStorage.setItem('wl2_custom_tokens', JSON.stringify(readCurrentTokens()));
+    localStorage.setItem('wl2dev_current_theme', 'custom');
+    localStorage.setItem('wl2dev_custom_tokens', JSON.stringify(readCurrentTokens()));
   } else if(pendingTheme !== null && pendingTheme !== 'custom'){
-    localStorage.setItem('wl2_current_theme', pendingTheme);
-    localStorage.removeItem('wl2_custom_tokens');
+    localStorage.setItem('wl2dev_current_theme', pendingTheme);
+    localStorage.removeItem('wl2dev_custom_tokens');
   }
   pendingTheme = null; pendingCustomEdited = false;
 
@@ -3263,34 +3282,82 @@ function saveSettings(){
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: 'v1.7.2', date: 'August 4, 2026', latest: true,
+    version: 'v1.6.13', date: 'August 4, 2026', latest: true,
     items: [
       'Fix: some entries kept failing to sync to Google Calendar with "Invalid start time" even with well-formed data -- caused by the GCal-side event being stuck in an all-day/timed mismatch that a normal update can\'t fix. It now recovers automatically by recreating the event fresh instead of failing every time'
     ]
   },
   {
-    version: 'v1.7.1', date: 'July 31, 2026', latest: false,
+    version: 'v1.6.12', date: 'July 31, 2026', latest: false,
     items: [
       'Fix: entries with a start time not in the app\'s picker (e.g. added via the AI Assistant or Import File) could get a malformed time and fail to sync to Google Calendar with "Invalid start time" -- times are now normalised everywhere an entry can be created or edited, not just from the time picker'
     ]
   },
   {
-    version: 'v1.7.0', date: 'July 31, 2026', latest: false,
+    version: 'v1.6.11', date: 'July 31, 2026', latest: false,
     items: [
-      'New: Import File — restore entries from your own JSON, CSV, or Excel exports. JSON restores everything; CSV/Excel restore name, type, deadline, time, remark only',
-      'Import skips duplicates automatically — matches by original ID (JSON/CSV/Excel all carry it) or by name+deadline+time if no ID is present, and no longer checks Trash, so a re-imported entry that matches something you deleted is added back instead of silently skipped',
-      'New: Clear Trash button in the Trash view — permanently deletes everything in Trash right away instead of waiting for the 5-day auto-purge (confirmation required)',
       'Fix: Google Calendar/Tasks update and delete errors now show the real reason from Google instead of always guessing "token may have expired" — makes it possible to tell a genuine expired session from a permission or account mismatch'
     ]
   },
   {
-    version: 'v1.6.1', date: 'July 2026', latest: false,
+    version: 'v1.6.10', date: 'July 31, 2026', latest: false,
     items: [
-      'AI Assistant upgraded — now runs on a much stronger model (GPT-OSS-120B) via a secure proxy, so you no longer need to paste your own API key. It can take real actions with reliable tool-calling (add, edit, delete, archive, restore, restore from trash), do several at once, and remembers the conversation for follow-ups. It now also correctly understands Trash as separate from Archive',
-      'Settings changes (including Appearance Theme changes) now require clicking "Save changes" to keep — leaving Settings with unsaved changes prompts you to save or discard instead of applying or losing them silently',
-      'Fix: the toast notification (e.g. "Settings saved.") used the page text colour as its background, which would render nearly invisible on the Twilight Sky and Neon Twilight themes — it now uses the theme\'s accent colour pairing, the same guaranteed-contrast pair used by primary buttons, so it stays readable on every theme',
-      'Fix: task type chips in the "Tasks Needing Attention" modal were plain grey, ignoring your custom type colours — they now match the colour-coded chips used everywhere else',
-      'Fix: the Woodland and Dusty Pink themes\' "success" colour (used for the Archive button, connected-calendar pill, Sync All, and several other spots) was so pale it was nearly indistinguishable from the surrounding card and border colours — both themes now use a clearly green success colour while keeping their muted look'
+      'New: Clear Trash button in the Trash view — permanently deletes everything in Trash right away instead of waiting for the 5-day auto-purge (confirmation required)'
+    ]
+  },
+  {
+    version: 'v1.6.9', date: 'July 31, 2026', latest: false,
+    items: [
+      'Fix: Import duplicate check no longer looks at Trash — a re-imported entry that matches something you deleted is now added back instead of being silently skipped'
+    ]
+  },
+  {
+    version: 'v1.6.8', date: 'July 27, 2026', latest: false,
+    items: [
+      'Import File now skips duplicates — matches by original ID (JSON/CSV/Excel all carry it) or by name+deadline+time if no ID is present, so re-importing the same file twice won\'t create copies'
+    ]
+  },
+  {
+    version: 'v1.6.7', date: 'July 27, 2026', latest: false,
+    items: [
+      'New: Import File — sidebar button restores entries from your own JSON, CSV, or Excel exports. JSON restores everything; CSV/Excel restore name, type, deadline, time, remark only'
+    ]
+  },
+  {
+    version: 'v1.6.6', date: 'July 15, 2026', latest: false,
+    items: [
+      'Fix: the AI Assistant had no visibility into Trash at all -- asking it to check or restore trashed entries would incorrectly say "nothing there" or confuse Trash with Archive. It now sees Trash separately and can restore items from it directly'
+    ]
+  },
+  {
+    version: 'v1.6.5', date: 'July 15, 2026', latest: false,
+    items: [
+      'Fix: the Woodland and Dusty Pink themes\' "success" colour (used for the Archive button, connected-calendar pill, Sync All, and several other spots) was so pale it was nearly indistinguishable from the surrounding card and border colours -- both themes now use a clearly green success colour while keeping their muted look'
+    ]
+  },
+  {
+    version: 'v1.6.4', date: 'July 15, 2026', latest: false,
+    items: [
+      'Fix: task type chips in the "Tasks Needing Attention" modal were plain grey, ignoring your custom type colours -- they now match the colour-coded chips used everywhere else'
+    ]
+  },
+  {
+    version: 'v1.6.3', date: 'July 14, 2026', latest: false,
+    items: [
+      'Fix: the toast notification (e.g. "Settings saved.") used the page text colour as its background, which would render nearly invisible on the Twilight Sky and Neon Twilight themes -- it now uses the theme\'s accent colour pairing instead, the same guaranteed-contrast pair used by primary buttons, so it stays readable on every theme including custom ones'
+    ]
+  },
+  {
+    version: 'v1.6.2', date: 'July 14, 2026', latest: false,
+    items: [
+      'AI Assistant upgraded — now runs on a much stronger model (GPT-OSS-120B) via a secure proxy, so you no longer need to paste your own API key. It can take real actions with reliable tool-calling (add, edit, delete, archive, restore), do several at once, and remembers the conversation for follow-ups',
+      'Fix: theme changes now preview live when you click them but require Save to keep — leaving Settings with an unsaved theme prompts you to save or discard, matching the rest of Settings'
+    ]
+  },
+  {
+    version: 'v1.6.1', date: 'July 13, 2026', latest: false,
+    items: [
+      'Fix: beta now keeps its own separate stored data instead of sharing localStorage with production (they were on the same origin on GitHub Pages) — your existing beta entries were copied over automatically, nothing was lost'
     ]
   },
   {
@@ -3768,7 +3835,7 @@ const THEME_TOKENS = [
   {key:'task-mode-bg', label:'Task mode chip bg',   tier:'adv', group:'Status — task mode'},
 ];
 
-let savedThemes = JSON.parse(localStorage.getItem('wl2_saved_themes') || '[]');
+let savedThemes = JSON.parse(localStorage.getItem('wl2dev_saved_themes') || '[]');
 
 function normalizeHex(v){
   v = (v || '').trim();
@@ -3900,7 +3967,7 @@ function saveCustomTheme(){
   const tokens = readCurrentTokens();
   const id = 't' + Date.now();
   savedThemes.push({ id, name, tokens });
-  localStorage.setItem('wl2_saved_themes', JSON.stringify(savedThemes));
+  localStorage.setItem('wl2dev_saved_themes', JSON.stringify(savedThemes));
   nameInput.value = '';
   applySavedTheme(id);
   toast('Theme "' + name + '" saved');
@@ -3920,7 +3987,7 @@ function applySavedTheme(id){
 
 function deleteSavedTheme(id){
   savedThemes = savedThemes.filter(t => t.id !== id);
-  localStorage.setItem('wl2_saved_themes', JSON.stringify(savedThemes));
+  localStorage.setItem('wl2dev_saved_themes', JSON.stringify(savedThemes));
   if(activeThemeName() === 'saved:' + id){
     switchTheme('default');
   }
@@ -3932,7 +3999,7 @@ function renameSavedTheme(id, value){
   const th = savedThemes.find(t => t.id === id);
   if(!th) return;
   th.name = (value || '').trim() || th.name;
-  localStorage.setItem('wl2_saved_themes', JSON.stringify(savedThemes));
+  localStorage.setItem('wl2dev_saved_themes', JSON.stringify(savedThemes));
 }
 
 function renderSavedThemes(){
@@ -3960,10 +4027,10 @@ function renderSavedThemes(){
 
 // Apply the stored theme on page load (no UI side-effects — settings isn't built yet).
 function loadTheme(){
-  const cur = localStorage.getItem('wl2_current_theme') || 'default';
+  const cur = localStorage.getItem('wl2dev_current_theme') || 'default';
   clearThemeOverrides();
   if(cur === 'custom'){
-    const tokens = JSON.parse(localStorage.getItem('wl2_custom_tokens') || '{}');
+    const tokens = JSON.parse(localStorage.getItem('wl2dev_custom_tokens') || '{}');
     document.documentElement.className = 'theme-custom';
     applyTokenSet(tokens);
     return;
