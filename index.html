@@ -1,4 +1,4 @@
-<!-- Work Log v2.0.1 --><!doctype html>
+<!-- Work Log DEV v1.8.20 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -10,16 +10,16 @@
       // the same thing with full state (saved-theme lookup etc.).
       (function () {
         try {
-          var cur = localStorage.getItem("wl2_current_theme") || "default";
+          var cur = localStorage.getItem("wl2dev_current_theme") || "default";
           var root = document.documentElement;
           var tokens = null;
           if (cur === "custom") {
             tokens = JSON.parse(
-              localStorage.getItem("wl2_custom_tokens") || "{}",
+              localStorage.getItem("wl2dev_custom_tokens") || "{}",
             );
           } else if (cur.indexOf("saved:") === 0) {
             var list = JSON.parse(
-              localStorage.getItem("wl2_saved_themes") || "[]",
+              localStorage.getItem("wl2dev_saved_themes") || "[]",
             );
             for (var i = 0; i < list.length; i++)
               if ("saved:" + list[i].id === cur) tokens = list[i].tokens;
@@ -3007,13 +3007,13 @@
             src="ce-logo.png"
             alt="Carrier Engagement"
             style="height: 32px; width: auto; display: block"
-          />Work Log
+          />Work Log DEV
           <span
             id="version-pill"
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v2.0.1</span
+            >/ v1.8.20</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -4518,10 +4518,55 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script>
+      // ── One-time migration: dev/beta used to share the 'wl2_' keys with
+      // production (same GitHub Pages origin). Copy any old shared data into the
+      // new 'wl2dev_' namespace once, without touching or deleting the old keys —
+      // production keeps reading 'wl2_' untouched.
+      (function migrateToDevNamespace() {
+        if (localStorage.getItem("wl2dev_migrated")) return;
+        const oldKeys = [
+          "wl2_archived",
+          "wl2_current_theme",
+          "wl2_custom_tokens",
+          "wl2_custom_type_order",
+          "wl2_custom_types",
+          "wl2_entries",
+          "wl2_gcal_client_id",
+          "wl2_gcal_token",
+          "wl2_saved_themes",
+          "wl2_trash",
+          "wl2_type_colors",
+          "wl2_type_gcal_ids",
+          "wl2_type_order",
+        ];
+        oldKeys.forEach((oldKey) => {
+          const newKey = oldKey.replace("wl2_", "wl2dev_");
+          if (localStorage.getItem(newKey) === null) {
+            const oldVal = localStorage.getItem(oldKey);
+            if (oldVal !== null) localStorage.setItem(newKey, oldVal);
+          }
+        });
+        localStorage.setItem("wl2dev_migrated", "1");
+      })();
+      // Retro-fix: the original migration list omitted wl2_custom_tokens, so users
+      // who already migrated kept a custom theme name with an empty palette. This
+      // runs outside the migrated guard and is idempotent.
+      if (
+        localStorage.getItem("wl2dev_custom_tokens") === null &&
+        localStorage.getItem("wl2_custom_tokens") !== null
+      ) {
+        localStorage.setItem(
+          "wl2dev_custom_tokens",
+          localStorage.getItem("wl2_custom_tokens"),
+        );
+      }
+
       // ── State ──────────────────────────────────────────────────────────────────
-      let entries = JSON.parse(localStorage.getItem("wl2_entries") || "[]");
-      let archived = JSON.parse(localStorage.getItem("wl2_archived") || "[]");
-      let trash = JSON.parse(localStorage.getItem("wl2_trash") || "[]");
+      let entries = JSON.parse(localStorage.getItem("wl2dev_entries") || "[]");
+      let archived = JSON.parse(
+        localStorage.getItem("wl2dev_archived") || "[]",
+      );
+      let trash = JSON.parse(localStorage.getItem("wl2dev_trash") || "[]");
       // Migration: add updated field to old entries that don't have it
       entries.forEach((e) => {
         if (!e.updated) e.updated = e.created;
@@ -4542,18 +4587,18 @@
         const before = trash.length;
         trash = trash.filter((e) => new Date(e.deletedAt).getTime() > cutoff);
         if (trash.length !== before)
-          localStorage.setItem("wl2_trash", JSON.stringify(trash));
+          localStorage.setItem("wl2dev_trash", JSON.stringify(trash));
       })();
       let viewMode = "active"; // 'active' or 'archive'
       let viewLayout = "calendar"; // always start on calendar — list is a per-session choice, never persisted
-      let calView = localStorage.getItem("wl2_cal_view") || "month"; // 'month' or 'year'
+      let calView = localStorage.getItem("wl2dev_cal_view") || "month"; // 'month' or 'year'
       let calYear = new Date().getFullYear();
       let calMonth = new Date().getMonth(); // 0-11, displayed calendar month
       let calEntryId = null; // entry shown in the calendar popover
       let calArchIdSet = new Set(); // archived entry ids currently shown in the month grid
       let searchQuery = "";
-      let gcalToken = localStorage.getItem("wl2_gcal_token") || null;
-      let gcalClientId = localStorage.getItem("wl2_gcal_client_id") || "";
+      let gcalToken = localStorage.getItem("wl2dev_gcal_token") || null;
+      let gcalClientId = localStorage.getItem("wl2dev_gcal_client_id") || "";
       let selectedFilterTypes = []; // empty = All
       let sortMode = "deadline";
       let sortDir = "desc"; // deadline default: furthest first
@@ -4583,19 +4628,19 @@
           : entry.name;
       }
       let customTypes = JSON.parse(
-        localStorage.getItem("wl2_custom_types") || "[]",
+        localStorage.getItem("wl2dev_custom_types") || "[]",
       );
       let customTypeOrder = JSON.parse(
-        localStorage.getItem("wl2_custom_type_order") || "[]",
+        localStorage.getItem("wl2dev_custom_type_order") || "[]",
       );
       let typeOrder = JSON.parse(
-        localStorage.getItem("wl2_type_order") || "[]",
+        localStorage.getItem("wl2dev_type_order") || "[]",
       );
       let typeColors = JSON.parse(
-        localStorage.getItem("wl2_type_colors") || "{}",
+        localStorage.getItem("wl2dev_type_colors") || "{}",
       );
       let typeGCalIds = JSON.parse(
-        localStorage.getItem("wl2_type_gcal_ids") || "{}",
+        localStorage.getItem("wl2dev_type_gcal_ids") || "{}",
       );
 
       function allTypes() {
@@ -5439,22 +5484,22 @@
       }
 
       function save() {
-        localStorage.setItem("wl2_entries", JSON.stringify(entries));
-        localStorage.setItem("wl2_archived", JSON.stringify(archived));
+        localStorage.setItem("wl2dev_entries", JSON.stringify(entries));
+        localStorage.setItem("wl2dev_archived", JSON.stringify(archived));
         syncDirty = true;
         scheduleSync();
       }
       function saveTrash() {
-        localStorage.setItem("wl2_trash", JSON.stringify(trash));
+        localStorage.setItem("wl2dev_trash", JSON.stringify(trash));
         syncDirty = true;
       }
       // Persist all lists WITHOUT marking data dirty or scheduling a sync — for the
       // merge itself, whose writes must never re-arm the next sync (that was the
       // v1.6.17-26 infinite 4-second sync loop).
       function persistMerged() {
-        localStorage.setItem("wl2_entries", JSON.stringify(entries));
-        localStorage.setItem("wl2_archived", JSON.stringify(archived));
-        localStorage.setItem("wl2_trash", JSON.stringify(trash));
+        localStorage.setItem("wl2dev_entries", JSON.stringify(entries));
+        localStorage.setItem("wl2dev_archived", JSON.stringify(archived));
+        localStorage.setItem("wl2dev_trash", JSON.stringify(trash));
         saveTombstones();
       }
 
@@ -7006,7 +7051,7 @@
       }
       function calSetCalView(v) {
         calView = v;
-        localStorage.setItem("wl2_cal_view", v);
+        localStorage.setItem("wl2dev_cal_view", v);
         render();
       }
       function calOpenMonth(m) {
@@ -7018,7 +7063,7 @@
         calYear = parseInt(p[0]);
         calMonth = parseInt(p[1]) - 1;
         calView = "month";
-        localStorage.setItem("wl2_cal_view", "month");
+        localStorage.setItem("wl2dev_cal_view", "month");
         render();
         openCalDay(ds);
       }
@@ -8427,7 +8472,7 @@
 
       function gcalDisconnect() {
         gcalToken = null;
-        localStorage.removeItem("wl2_gcal_token");
+        localStorage.removeItem("wl2dev_gcal_token");
         clearGCalExpired();
         document.getElementById("gcal-pill").classList.remove("connected");
         document.getElementById("gcal-pill-text").textContent =
@@ -8451,7 +8496,7 @@
           return;
         }
         gcalClientId = cid;
-        localStorage.setItem("wl2_gcal_client_id", cid);
+        localStorage.setItem("wl2dev_gcal_client_id", cid);
         const scope = encodeURIComponent(
           "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/drive.appdata",
         );
@@ -8504,7 +8549,7 @@
       // automatic postMessage capture and by the manual-paste fallback.
       function gcalApplyToken(t) {
         gcalToken = t;
-        localStorage.setItem("wl2_gcal_token", t);
+        localStorage.setItem("wl2dev_gcal_token", t);
         clearGCalExpired();
         document.getElementById("gcal-pill").classList.add("connected");
         document.getElementById("gcal-pill-text").textContent =
@@ -8877,29 +8922,29 @@
       // id, newest effective timestamp wins per entry; tombstones (permanent
       // deletes) kill an entry everywhere unless it was edited after the delete.
       // Theme/UI settings deliberately NOT synced (per-device preference).
-      const SYNC_NS = "wl2_"; // becomes 'wl2_' via the production promotion transform
+      const SYNC_NS = "wl2dev_"; // becomes 'wl2_' via the production promotion transform
       const SYNC_FILE_NAME =
         SYNC_NS === "wl2_" ? "worklog-sync.json" : "worklog-dev-sync.json";
       let tombstones = JSON.parse(
-        localStorage.getItem("wl2_tombstones") || "[]",
+        localStorage.getItem("wl2dev_tombstones") || "[]",
       ); // [{id, ts}]
       let typeTombstones = JSON.parse(
-        localStorage.getItem("wl2_type_tombstones") || "[]",
+        localStorage.getItem("wl2dev_type_tombstones") || "[]",
       ); // [{name, ts}] — deleted custom types, so a union merge doesn't resurrect them
       function saveTypeTombstones() {
         localStorage.setItem(
-          "wl2_type_tombstones",
+          "wl2dev_type_tombstones",
           JSON.stringify(typeTombstones),
         );
       }
-      let syncFileId = localStorage.getItem("wl2_sync_file_id") || null;
+      let syncFileId = localStorage.getItem("wl2dev_sync_file_id") || null;
       let syncInProgress = false;
       let syncDebounceTimer = null;
       let syncPendingAgain = false; // a save happened while a sync was in flight
       let syncDirty = false; // local data changed since the last successful upload
 
       function saveTombstones() {
-        localStorage.setItem("wl2_tombstones", JSON.stringify(tombstones));
+        localStorage.setItem("wl2dev_tombstones", JSON.stringify(tombstones));
       }
       function addTombstones(ids) {
         const ts = Date.now();
@@ -8932,7 +8977,8 @@
         return {
           version: 1,
           savedAt: new Date().toISOString(),
-          settingsUpdatedAt: localStorage.getItem("wl2_settings_updated") || "",
+          settingsUpdatedAt:
+            localStorage.getItem("wl2dev_settings_updated") || "",
           entries,
           archived,
           trash,
@@ -9106,7 +9152,7 @@
         // Per-field conflicts (colour, GCal id, order) are settled by whichever
         // side has the newer settings stamp. Deletions travel via typeTombstones
         // so a union merge doesn't resurrect a type someone removed on purpose.
-        const localTs = localStorage.getItem("wl2_settings_updated") || "";
+        const localTs = localStorage.getItem("wl2dev_settings_updated") || "";
         const remoteTs = remote.settingsUpdatedAt || "";
         if (Array.isArray(remote.customTypes)) {
           const remoteNewer = remoteTs > localTs;
@@ -9121,7 +9167,10 @@
               typeTombMap[t.name] = Math.max(typeTombMap[t.name] || 0, t.ts);
           });
 
-          const nameSet = new Set([...customTypes, ...remote.customTypes]);
+          const nameSet = new Set([
+            ...customTypes,
+            ...remote.customTypes,
+          ]);
           nameSet.forEach((n) => {
             if (typeTombMap[n]) nameSet.delete(n);
           });
@@ -9131,27 +9180,18 @@
           const remoteGCalIds = remote.typeGCalIds || {};
           const mergedColors = { ...typeColors };
           const mergedGCalIds = { ...typeGCalIds };
-          [
-            ...new Set([
-              ...Object.keys(typeColors),
-              ...Object.keys(remoteColors),
-            ]),
-          ].forEach((n) => {
-            if (remoteColors[n] && (remoteNewer || !typeColors[n]))
-              mergedColors[n] = remoteColors[n];
-          });
-          [
-            ...new Set([
-              ...Object.keys(typeGCalIds),
-              ...Object.keys(remoteGCalIds),
-            ]),
-          ].forEach((n) => {
-            if (
-              remoteGCalIds[n] != null &&
-              (remoteNewer || typeGCalIds[n] == null)
-            )
-              mergedGCalIds[n] = remoteGCalIds[n];
-          });
+          [...new Set([...Object.keys(typeColors), ...Object.keys(remoteColors)])].forEach(
+            (n) => {
+              if (remoteColors[n] && (remoteNewer || !typeColors[n]))
+                mergedColors[n] = remoteColors[n];
+            },
+          );
+          [...new Set([...Object.keys(typeGCalIds), ...Object.keys(remoteGCalIds)])].forEach(
+            (n) => {
+              if (remoteGCalIds[n] != null && (remoteNewer || typeGCalIds[n] == null))
+                mergedGCalIds[n] = remoteGCalIds[n];
+            },
+          );
           Object.keys(mergedColors).forEach((n) => {
             if (typeTombMap[n]) delete mergedColors[n];
           });
@@ -9163,7 +9203,9 @@
 
           // Order: newer side's ordering leads, any type it doesn't mention
           // (only known to the older side) is appended at the end.
-          const orderBase = remoteNewer ? remote.typeOrder || [] : typeOrder;
+          const orderBase = remoteNewer
+            ? remote.typeOrder || []
+            : typeOrder;
           const coBase = remoteNewer
             ? remote.customTypeOrder || []
             : customTypeOrder;
@@ -9186,19 +9228,25 @@
             .map((n) => ({ name: n, ts: typeTombMap[n] }));
           saveTypeTombstones();
 
-          localStorage.setItem("wl2_custom_types", JSON.stringify(customTypes));
-          localStorage.setItem("wl2_type_colors", JSON.stringify(typeColors));
           localStorage.setItem(
-            "wl2_type_gcal_ids",
+            "wl2dev_custom_types",
+            JSON.stringify(customTypes),
+          );
+          localStorage.setItem(
+            "wl2dev_type_colors",
+            JSON.stringify(typeColors),
+          );
+          localStorage.setItem(
+            "wl2dev_type_gcal_ids",
             JSON.stringify(typeGCalIds),
           );
           localStorage.setItem(
-            "wl2_custom_type_order",
+            "wl2dev_custom_type_order",
             JSON.stringify(customTypeOrder),
           );
-          localStorage.setItem("wl2_type_order", JSON.stringify(typeOrder));
+          localStorage.setItem("wl2dev_type_order", JSON.stringify(typeOrder));
           if (remoteNewer)
-            localStorage.setItem("wl2_settings_updated", remoteTs);
+            localStorage.setItem("wl2dev_settings_updated", remoteTs);
           populateTypeSelects();
         }
 
@@ -9241,9 +9289,9 @@
         updateSyncStatusUI("Syncing…");
         try {
           // One-time safety snapshot of local data before the first merge ever runs
-          if (!localStorage.getItem("wl2_pre_sync_backup")) {
+          if (!localStorage.getItem("wl2dev_pre_sync_backup")) {
             localStorage.setItem(
-              "wl2_pre_sync_backup",
+              "wl2dev_pre_sync_backup",
               JSON.stringify({
                 at: new Date().toISOString(),
                 entries,
@@ -9287,10 +9335,10 @@
             }
             if (newId && newId !== syncFileId) {
               syncFileId = newId;
-              localStorage.setItem("wl2_sync_file_id", newId);
+              localStorage.setItem("wl2dev_sync_file_id", newId);
             }
           }
-          localStorage.setItem("wl2_last_sync", new Date().toISOString());
+          localStorage.setItem("wl2dev_last_sync", new Date().toISOString());
           if (stats.pulled || stats.removed) {
             // Never re-render over an open inline edit — it would rebuild the card
             // from stored state and wipe the user's typing. The save/cancel that
@@ -9346,7 +9394,7 @@
           el.textContent = override;
           return;
         }
-        const last = localStorage.getItem("wl2_last_sync");
+        const last = localStorage.getItem("wl2dev_last_sync");
         el.textContent = last
           ? "Last synced " + new Date(last).toLocaleString()
           : "Not synced yet";
@@ -9439,7 +9487,7 @@
       function activeThemeName() {
         return pendingTheme !== null
           ? pendingTheme
-          : localStorage.getItem("wl2_current_theme") || "default";
+          : localStorage.getItem("wl2dev_current_theme") || "default";
       }
 
       function openSettings() {
@@ -9453,7 +9501,8 @@
           savedThemes: JSON.stringify(savedThemes),
         };
         settingsDirty = false;
-        pendingTheme = localStorage.getItem("wl2_current_theme") || "default";
+        pendingTheme =
+          localStorage.getItem("wl2dev_current_theme") || "default";
         pendingCustomEdited = false;
         buildSettingsUI();
         document.getElementById("settings-overlay").classList.add("open");
@@ -9486,7 +9535,10 @@
         BUILTIN_TYPES.length = 0;
         BUILTIN_TYPES.push(...settingsSnapshot.builtinTypes);
         savedThemes = JSON.parse(settingsSnapshot.savedThemes);
-        localStorage.setItem("wl2_saved_themes", JSON.stringify(savedThemes));
+        localStorage.setItem(
+          "wl2dev_saved_themes",
+          JSON.stringify(savedThemes),
+        );
         pendingTheme = null;
         pendingCustomEdited = false;
         loadTheme();
@@ -9689,14 +9741,20 @@
           }
           if (gcalEl) typeGCalIds[t] = gcalEl.value;
         });
-        localStorage.setItem("wl2_type_colors", JSON.stringify(typeColors));
-        localStorage.setItem("wl2_type_gcal_ids", JSON.stringify(typeGCalIds));
-        localStorage.setItem("wl2_custom_types", JSON.stringify(customTypes));
+        localStorage.setItem("wl2dev_type_colors", JSON.stringify(typeColors));
         localStorage.setItem(
-          "wl2_custom_type_order",
+          "wl2dev_type_gcal_ids",
+          JSON.stringify(typeGCalIds),
+        );
+        localStorage.setItem(
+          "wl2dev_custom_types",
+          JSON.stringify(customTypes),
+        );
+        localStorage.setItem(
+          "wl2dev_custom_type_order",
           JSON.stringify(customTypeOrder),
         );
-        localStorage.setItem("wl2_type_order", JSON.stringify(typeOrder));
+        localStorage.setItem("wl2dev_type_order", JSON.stringify(typeOrder));
         // Only stamp settings_updated when the SYNCED part (types, order, colours,
         // GCal ids) actually changed. Themes stay per-device, so a theme-only save
         // must not advance the stamp — otherwise this device's possibly-stale type
@@ -9722,7 +9780,7 @@
           : null;
         if (before === null || before !== typeFingerprint()) {
           localStorage.setItem(
-            "wl2_settings_updated",
+            "wl2dev_settings_updated",
             new Date().toISOString(),
           );
           syncDirty = true;
@@ -9731,14 +9789,14 @@
 
         // Commit the previewed theme (deferred until Save)
         if (pendingCustomEdited) {
-          localStorage.setItem("wl2_current_theme", "custom");
+          localStorage.setItem("wl2dev_current_theme", "custom");
           localStorage.setItem(
-            "wl2_custom_tokens",
+            "wl2dev_custom_tokens",
             JSON.stringify(readCurrentTokens()),
           );
         } else if (pendingTheme !== null && pendingTheme !== "custom") {
-          localStorage.setItem("wl2_current_theme", pendingTheme);
-          localStorage.removeItem("wl2_custom_tokens");
+          localStorage.setItem("wl2dev_current_theme", pendingTheme);
+          localStorage.removeItem("wl2dev_custom_tokens");
         }
         pendingTheme = null;
         pendingCustomEdited = false;
@@ -9756,26 +9814,11 @@
       // ── Changelog ──────────────────────────────────────────────────────────────
       const CHANGELOG = [
         {
-          version: "v2.0.1",
+          version: "v1.8.20",
           date: "August 21, 2026",
           latest: true,
           items: [
             "Fixed: syncing across devices could wipe out custom task types and colours — cross-device type sync now merges both devices' types together instead of one side's list replacing the other's",
-          ],
-        },
-        {
-          version: "v2.0.0",
-          date: "August 18, 2026",
-          latest: false,
-          items: [
-            "Work Log 2.0 — a fresh start. Everything from the v1.8 beta line is now in production:",
-            "Calendar view (month / year) alongside the list, with quick add, day and entry popups, multi-day bars",
-            "Cross-device sync via Google Drive, plus Google Calendar / Tasks push with duplicate protection",
-            "New date fields: locked dd / mm / yyyy blocks — click a block, type to overwrite, Backspace clears the block",
-            "Repeat entries, Trash with confirmation and Undo, bulk select / archive / delete",
-            "Themes (Default, Dark, Dusty Pink, Twilight Sky, Neon Twilight, Woodland) + custom theme editor",
-            "Phone layout: floating + button, full-screen entry form, toasts at top that never block taps",
-            "Accessibility pass: keyboard-reachable calendar chips, labelled date blocks, focus rings, reduced-motion support",
           ],
         },
         {
@@ -11267,7 +11310,7 @@
       ];
 
       let savedThemes = JSON.parse(
-        localStorage.getItem("wl2_saved_themes") || "[]",
+        localStorage.getItem("wl2dev_saved_themes") || "[]",
       );
 
       function normalizeHex(v) {
@@ -11428,7 +11471,10 @@
         const tokens = readCurrentTokens();
         const id = "t" + Date.now();
         savedThemes.push({ id, name, tokens });
-        localStorage.setItem("wl2_saved_themes", JSON.stringify(savedThemes));
+        localStorage.setItem(
+          "wl2dev_saved_themes",
+          JSON.stringify(savedThemes),
+        );
         nameInput.value = "";
         applySavedTheme(id);
         toast('Theme "' + name + '" saved');
@@ -11450,7 +11496,10 @@
 
       function deleteSavedTheme(id) {
         savedThemes = savedThemes.filter((t) => t.id !== id);
-        localStorage.setItem("wl2_saved_themes", JSON.stringify(savedThemes));
+        localStorage.setItem(
+          "wl2dev_saved_themes",
+          JSON.stringify(savedThemes),
+        );
         if (activeThemeName() === "saved:" + id) {
           switchTheme("default");
         }
@@ -11462,7 +11511,10 @@
         const th = savedThemes.find((t) => t.id === id);
         if (!th) return;
         th.name = (value || "").trim() || th.name;
-        localStorage.setItem("wl2_saved_themes", JSON.stringify(savedThemes));
+        localStorage.setItem(
+          "wl2dev_saved_themes",
+          JSON.stringify(savedThemes),
+        );
       }
 
       function renderSavedThemes() {
@@ -11497,11 +11549,11 @@
 
       // Apply the stored theme on page load (no UI side-effects — settings isn't built yet).
       function loadTheme() {
-        const cur = localStorage.getItem("wl2_current_theme") || "default";
+        const cur = localStorage.getItem("wl2dev_current_theme") || "default";
         clearThemeOverrides();
         if (cur === "custom") {
           const tokens = JSON.parse(
-            localStorage.getItem("wl2_custom_tokens") || "{}",
+            localStorage.getItem("wl2dev_custom_tokens") || "{}",
           );
           document.documentElement.className = "theme-custom";
           applyTokenSet(tokens);
