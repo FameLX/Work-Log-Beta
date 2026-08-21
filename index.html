@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.8.20 --><!doctype html>
+<!-- Work Log DEV v1.8.21 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -3013,7 +3013,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.8.20</span
+            >/ v1.8.21</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -7083,8 +7083,20 @@
       function toggleTaskDone(id) {
         const e = entries.find((x) => x.id === id);
         if (!e || e.syncMode !== "task") return;
+        const wasCompleted = e.completed;
         e.completed = !e.completed;
         touchEntry(e);
+        if (e.completed && !wasCompleted) {
+          e.archivedAt = new Date().toISOString();
+          archived.unshift(e);
+          entries = entries.filter((x) => x.id !== id);
+          toast("Task completed and archived.");
+        } else if (!e.completed && wasCompleted) {
+          delete e.archivedAt;
+          archived = archived.filter((x) => x.id !== id);
+          entries.unshift(e);
+          toast("Task restored.");
+        }
         save();
         render();
         if (gcalToken && e.gcalTaskId) patchGTask(e, true);
@@ -9167,10 +9179,7 @@
               typeTombMap[t.name] = Math.max(typeTombMap[t.name] || 0, t.ts);
           });
 
-          const nameSet = new Set([
-            ...customTypes,
-            ...remote.customTypes,
-          ]);
+          const nameSet = new Set([...customTypes, ...remote.customTypes]);
           nameSet.forEach((n) => {
             if (typeTombMap[n]) nameSet.delete(n);
           });
@@ -9180,18 +9189,27 @@
           const remoteGCalIds = remote.typeGCalIds || {};
           const mergedColors = { ...typeColors };
           const mergedGCalIds = { ...typeGCalIds };
-          [...new Set([...Object.keys(typeColors), ...Object.keys(remoteColors)])].forEach(
-            (n) => {
-              if (remoteColors[n] && (remoteNewer || !typeColors[n]))
-                mergedColors[n] = remoteColors[n];
-            },
-          );
-          [...new Set([...Object.keys(typeGCalIds), ...Object.keys(remoteGCalIds)])].forEach(
-            (n) => {
-              if (remoteGCalIds[n] != null && (remoteNewer || typeGCalIds[n] == null))
-                mergedGCalIds[n] = remoteGCalIds[n];
-            },
-          );
+          [
+            ...new Set([
+              ...Object.keys(typeColors),
+              ...Object.keys(remoteColors),
+            ]),
+          ].forEach((n) => {
+            if (remoteColors[n] && (remoteNewer || !typeColors[n]))
+              mergedColors[n] = remoteColors[n];
+          });
+          [
+            ...new Set([
+              ...Object.keys(typeGCalIds),
+              ...Object.keys(remoteGCalIds),
+            ]),
+          ].forEach((n) => {
+            if (
+              remoteGCalIds[n] != null &&
+              (remoteNewer || typeGCalIds[n] == null)
+            )
+              mergedGCalIds[n] = remoteGCalIds[n];
+          });
           Object.keys(mergedColors).forEach((n) => {
             if (typeTombMap[n]) delete mergedColors[n];
           });
@@ -9203,9 +9221,7 @@
 
           // Order: newer side's ordering leads, any type it doesn't mention
           // (only known to the older side) is appended at the end.
-          const orderBase = remoteNewer
-            ? remote.typeOrder || []
-            : typeOrder;
+          const orderBase = remoteNewer ? remote.typeOrder || [] : typeOrder;
           const coBase = remoteNewer
             ? remote.customTypeOrder || []
             : customTypeOrder;
@@ -9814,7 +9830,7 @@
       // ── Changelog ──────────────────────────────────────────────────────────────
       const CHANGELOG = [
         {
-          version: "v1.8.20",
+          version: "v1.8.21",
           date: "August 21, 2026",
           latest: true,
           items: [
