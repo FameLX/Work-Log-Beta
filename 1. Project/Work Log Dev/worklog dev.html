@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.8.21 --><!doctype html>
+<!-- Work Log DEV v1.8.22 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -3013,7 +3013,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.8.21</span
+            >/ v1.8.22</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -5518,6 +5518,7 @@
         const e = archived.find((x) => x.id === id);
         if (!e) return;
         delete e.archivedAt;
+        if (e.syncMode === "task") e.completed = false;
         // Same sync rule as restoreFromTrash: newest timestamp must be the restore.
         touchEntry(e);
         entries.unshift(e);
@@ -5525,6 +5526,8 @@
         save();
         render();
         toast("Entry restored to active.");
+        if (e.syncMode === "task" && gcalToken && e.gcalTaskId)
+          patchGTask(e, true);
       }
 
       function deleteArchived(id) {
@@ -7081,17 +7084,20 @@
       // Task checkbox on calendar chips — marks the task done/not-done and mirrors
       // the state to Google Tasks when connected.
       function toggleTaskDone(id) {
-        const e = entries.find((x) => x.id === id);
+        const inEntries = entries.some((x) => x.id === id);
+        const e = inEntries
+          ? entries.find((x) => x.id === id)
+          : archived.find((x) => x.id === id);
         if (!e || e.syncMode !== "task") return;
         const wasCompleted = e.completed;
         e.completed = !e.completed;
         touchEntry(e);
-        if (e.completed && !wasCompleted) {
+        if (e.completed && !wasCompleted && inEntries) {
           e.archivedAt = new Date().toISOString();
           archived.unshift(e);
           entries = entries.filter((x) => x.id !== id);
           toast("Task completed and archived.");
-        } else if (!e.completed && wasCompleted) {
+        } else if (!e.completed && wasCompleted && !inEntries) {
           delete e.archivedAt;
           archived = archived.filter((x) => x.id !== id);
           entries.unshift(e);
@@ -9830,7 +9836,7 @@
       // ── Changelog ──────────────────────────────────────────────────────────────
       const CHANGELOG = [
         {
-          version: "v1.8.21",
+          version: "v1.8.22",
           date: "August 21, 2026",
           latest: true,
           items: [
