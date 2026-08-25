@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.8.22 --><!doctype html>
+<!-- Work Log DEV v1.8.23 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -2974,7 +2974,9 @@
           -webkit-overflow-scrolling: touch;
         }
         .cal-weekdays,
-        .cal-week-days {
+        .cal-week-days,
+        .cal-week,
+        .cal-week-bars {
           min-width: 560px;
         }
         .cal-year-grid {
@@ -3013,7 +3015,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.8.22</span
+            >/ v1.8.23</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -9836,9 +9838,33 @@
       // ── Changelog ──────────────────────────────────────────────────────────────
       const CHANGELOG = [
         {
+          version: "v1.8.23",
+          date: "August 25, 2026",
+          latest: true,
+          items: [
+            "Fixed: on mobile, multi-day calendar entries (e.g. an event spanning two days) could appear shifted under the wrong date column until you scrolled the calendar sideways — the entry bar now scrolls in lockstep with the day columns",
+          ],
+        },
+        {
           version: "v1.8.22",
           date: "August 21, 2026",
-          latest: true,
+          latest: false,
+          items: [
+            "Fixed: restoring a completed task from the archive left it stuck marked done, and unchecking it afterward created a duplicate — restoring a task now clears its done state properly",
+          ],
+        },
+        {
+          version: "v1.8.21",
+          date: "August 21, 2026",
+          latest: false,
+          items: [
+            "Calendar: checking a task's checkbox now automatically archives it; unchecking a task in the archive restores it to active",
+          ],
+        },
+        {
+          version: "v1.8.20",
+          date: "August 21, 2026",
+          latest: false,
           items: [
             "Fixed: syncing across devices could wipe out custom task types and colours — cross-device type sync now merges both devices' types together instead of one side's list replacing the other's",
           ],
