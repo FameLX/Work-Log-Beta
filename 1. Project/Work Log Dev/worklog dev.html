@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.8.23 --><!doctype html>
+<!-- Work Log DEV v1.8.24 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -3015,7 +3015,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.8.23</span
+            >/ v1.8.24</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -7331,31 +7331,35 @@
                 contR: e.deadlineEnd > weekEnd,
               });
             });
-          const laneCount = lanes.length;
-          const barArea = laneCount * 24;
-
-          // Chips that fit below the day number and this week's bar lanes; when
-          // not everything fits, one chip slot is traded for the "+N more" line.
-          // Cell = padding-top 28 (+ bar lanes) + chips + padding-bottom 4 + 1px
-          // border; each chip is 20.5px with a 2px flex gap (stride 22.5, no gap
-          // after the last). Undercounting these clipped the last chip on tall windows.
-          const fitAll = Math.max(
-            0,
-            Math.floor((rowH - 33 - barArea + 2) / 22.5),
+          // Per-day bar clearance: only days a bar actually spans need padding
+          // for it, so an unaffected day in the same row keeps its full chip
+          // capacity instead of losing space to a bar drawn over its neighbours.
+          const dayBarArea = days.map(
+            (_, i) => bars.filter((b) => b.s <= i && b.en >= i).length * 24,
           );
+
+          // Chips that fit below the day number and that day's own bar lanes;
+          // when not everything fits, one chip slot is traded for the "+N more"
+          // line. Cell = padding-top 28 (+ that day's bar lanes) + chips +
+          // padding-bottom 4 + 1px border; each chip is 20.5px with a 2px flex
+          // gap (stride 22.5, no gap after the last). Undercounting these
+          // clipped the last chip on tall windows.
+          const fitAllForDay = (barAreaForDay) =>
+            Math.max(0, Math.floor((rowH - 33 - barAreaForDay + 2) / 22.5));
           html +=
             `<div class="cal-week"><div class="cal-week-days">` +
             days
-              .map((day) => {
+              .map((day, i) => {
                 const other = day.m !== calMonth;
                 const daySingles = singlesByDay[day.ds] || [];
+                const fitAll = fitAllForDay(dayBarArea[i]);
                 const maxChips =
                   daySingles.length <= fitAll
                     ? fitAll
                     : Math.max(0, fitAll - 1);
                 const chips = daySingles.slice(0, maxChips);
                 const more = daySingles.length - chips.length;
-                return `<div class="cal-day${other ? " other-month" : ""}" role="button" tabindex="0" aria-label="${fmtDate(day.ds)}" onclick="calDayClick('${day.ds}')" style="padding-top:${28 + barArea}px;">
+                return `<div class="cal-day${other ? " other-month" : ""}" role="button" tabindex="0" aria-label="${fmtDate(day.ds)}" onclick="calDayClick('${day.ds}')" style="padding-top:${28 + dayBarArea[i]}px;">
           <span class="cal-day-num${day.ds === todayStr ? " today" : ""}" role="button" tabindex="0" onclick="event.stopPropagation();openCalDay('${day.ds}')" title="Show everything on this day">${day.d}</span>
           ${chips.map(calChipHTML).join("")}
           ${more > 0 ? `<span class="cal-more" role="button" tabindex="0" onclick="event.stopPropagation();openCalDay('${day.ds}')">+${more} more</span>` : ""}
@@ -9838,9 +9842,17 @@
       // ── Changelog ──────────────────────────────────────────────────────────────
       const CHANGELOG = [
         {
-          version: "v1.8.23",
+          version: "v1.8.24",
           date: "August 25, 2026",
           latest: true,
+          items: [
+            'Fixed: a day could show "+N more" with none of its own entries visible, even with just 2-3 entries — caused by a multi-day event elsewhere in the same week eating into every day\'s space; unrelated days now keep their full room',
+          ],
+        },
+        {
+          version: "v1.8.23",
+          date: "August 25, 2026",
+          latest: false,
           items: [
             "Fixed: on mobile, multi-day calendar entries (e.g. an event spanning two days) could appear shifted under the wrong date column until you scrolled the calendar sideways — the entry bar now scrolls in lockstep with the day columns",
           ],
