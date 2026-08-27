@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.9.0 --><!doctype html>
+<!-- Work Log DEV v1.9.1 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -3015,7 +3015,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.9.0</span
+            >/ v1.9.1</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -7782,11 +7782,8 @@
         ?.addEventListener("click", (ev) => {
           if (ev.target.id === "cal-quickadd-modal") closeCalQuickAdd();
         });
-      document
-        .getElementById("cal-edit-modal")
-        ?.addEventListener("click", (ev) => {
-          if (ev.target.id === "cal-edit-modal") closeCalEditModal();
-        });
+      // No click-outside-to-close on cal-edit-modal (v1.9.1) — an edit in
+      // progress should only close via Cancel/Save/Escape, not a stray click.
 
       // Re-fit the calendar's chip capacity when the window size changes — without
       // this, growing the window leaves stale "+N more" and shrinking silently
@@ -9950,9 +9947,17 @@
       // ── Changelog ──────────────────────────────────────────────────────────────
       const CHANGELOG = [
         {
-          version: "v1.9.0",
+          version: "v1.9.1",
           date: "August 27, 2026",
           latest: true,
+          items: [
+            "Fixed: the calendar edit modal closed if you clicked outside it, easy to trigger by accident mid-edit — it now only closes via Cancel, Save, or Escape",
+          ],
+        },
+        {
+          version: "v1.9.0",
+          date: "August 27, 2026",
+          latest: false,
           items: [
             "List view: hold down an entry to select it (mobile) alongside the existing Select button (desktop); selected entries can now be moved to a new date, in addition to archive/delete",
           ],
