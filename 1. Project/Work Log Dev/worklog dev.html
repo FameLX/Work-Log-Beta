@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.8.24 --><!doctype html>
+<!-- Work Log DEV v1.9.0 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -3015,7 +3015,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.8.24</span
+            >/ v1.9.0</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -3588,6 +3588,9 @@
         <div class="bulk-bar" id="bulk-bar">
           <span id="bulk-count">0 selected</span>
           <div style="flex: 1"></div>
+          <button class="btn" onclick="openBulkMoveModal()">
+            Move selected
+          </button>
           <button class="btn" onclick="bulkArchive()">Archive selected</button>
           <button class="btn btn-danger" onclick="bulkDelete()">
             Delete selected
@@ -4060,6 +4063,29 @@
           >
             Move to Trash
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="bulk-move-modal">
+      <div class="modal">
+        <h2>Move selected entries</h2>
+        <p
+          style="
+            font-size: 13px;
+            color: var(--text2);
+            line-height: 1.6;
+            margin-bottom: 10px;
+          "
+          id="bulk-move-body"
+        ></p>
+        <div>
+          <label class="field-label">New date</label>
+          <input type="date" id="bulk-move-date" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="closeBulkMoveModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="bulkMoveOk()">Move</button>
         </div>
       </div>
     </div>
@@ -5869,6 +5895,29 @@
       let selectMode = false;
       let selectedIds = new Set();
 
+      // Mobile entry point into select mode: hold a card ~500ms to enter select
+      // mode with that card already checked, mirroring the desktop Select button.
+      let longPressTimer = null;
+      let longPressFired = false;
+      const LONG_PRESS_MS = 500;
+      function entryTouchStart(id) {
+        longPressFired = false;
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => {
+          longPressFired = true;
+          if (!selectMode) toggleSelectMode();
+          if (!selectedIds.has(id)) toggleEntrySelect(id);
+          if (navigator.vibrate) navigator.vibrate(15);
+        }, LONG_PRESS_MS);
+      }
+      function entryTouchEnd(ev) {
+        clearTimeout(longPressTimer);
+        if (longPressFired && ev) ev.preventDefault();
+      }
+      function entryTouchMove() {
+        clearTimeout(longPressTimer);
+      }
+
       function toggleSelectMode() {
         selectMode = !selectMode;
         selectedIds.clear();
@@ -5969,6 +6018,62 @@
         save();
         toggleSelectMode();
         toast(`${count} ${count === 1 ? "entry" : "entries"} archived.`);
+      }
+
+      function openBulkMoveModal() {
+        if (!selectedIds.size) return;
+        const count = selectedIds.size;
+        document.getElementById("bulk-move-body").innerHTML =
+          `<b>${count} ${count === 1 ? "entry" : "entries"}</b> will move to the date you pick. Multi-day spans keep their length.`;
+        document.getElementById("bulk-move-date").value = "";
+        document.getElementById("bulk-move-modal").classList.add("open");
+      }
+      function closeBulkMoveModal() {
+        document.getElementById("bulk-move-modal").classList.remove("open");
+      }
+      document
+        .getElementById("bulk-move-modal")
+        ?.addEventListener("click", (ev) => {
+          if (ev.target.id === "bulk-move-modal") closeBulkMoveModal();
+        });
+      function bulkMoveOk() {
+        const dateStr = v("bulk-move-date");
+        if (!dateStr) {
+          fieldError("bulk-move-date", "Pick a date.");
+          return;
+        }
+        closeBulkMoveModal();
+        bulkMove(dateStr);
+      }
+      function bulkMove(dateStr) {
+        if (!selectedIds.size) return;
+        const count = selectedIds.size;
+        const moved = [];
+        selectedIds.forEach((id) => {
+          const e = entries.find((x) => x.id === id);
+          if (!e || !e.deadline) return;
+          if (e.deadlineEnd) {
+            const spanDays = Math.round(
+              (new Date(e.deadlineEnd) - new Date(e.deadline)) / 86400000,
+            );
+            const newEnd = new Date(dateStr);
+            newEnd.setDate(newEnd.getDate() + spanDays);
+            e.deadlineEnd = newEnd.toISOString().slice(0, 10);
+          }
+          e.deadline = dateStr;
+          touchEntry(e);
+          moved.push(e);
+        });
+        selectedIds.clear();
+        save();
+        toggleSelectMode();
+        toast(`${count} ${count === 1 ? "entry" : "entries"} moved.`);
+        if (gcalToken) {
+          moved.forEach((e) => {
+            if (e.syncMode === "task" && e.gcalTaskId) patchGTask(e);
+            else if (e.syncMode !== "task" && e.gcalEventId) patchGCal(e);
+          });
+        }
       }
 
       // ── Repeat Entry ──────────────────────────────────────────────────────────────
@@ -6883,9 +6988,12 @@
           selectMode && !isArchived
             ? ` onclick="toggleEntrySelect(${e.id})"`
             : "";
+        const longPressAttrs = isArchived
+          ? ""
+          : ` ontouchstart="entryTouchStart(${e.id})" ontouchend="entryTouchEnd(event)" ontouchmove="entryTouchMove()"`;
 
         return `
-    <div class="entry-card" id="card-${e.id}"${colorStyle}${cardClick}>
+    <div class="entry-card" id="card-${e.id}"${colorStyle}${cardClick}${longPressAttrs}>
       <div class="entry-top">
         <div class="entry-body">
           <div class="entry-name">${highlight(e.name, searchQuery)}</div>
@@ -9842,9 +9950,17 @@
       // ── Changelog ──────────────────────────────────────────────────────────────
       const CHANGELOG = [
         {
+          version: "v1.9.0",
+          date: "August 27, 2026",
+          latest: true,
+          items: [
+            "List view: hold down an entry to select it (mobile) alongside the existing Select button (desktop); selected entries can now be moved to a new date, in addition to archive/delete",
+          ],
+        },
+        {
           version: "v1.8.24",
           date: "August 25, 2026",
-          latest: true,
+          latest: false,
           items: [
             'Fixed: a day could show "+N more" with none of its own entries visible, even with just 2-3 entries — caused by a multi-day event elsewhere in the same week eating into every day\'s space; unrelated days now keep their full room',
           ],
