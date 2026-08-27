@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.9.1 --><!doctype html>
+<!-- Work Log DEV v1.9.2 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -3015,7 +3015,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.9.1</span
+            >/ v1.9.2</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -8885,7 +8885,10 @@
             if (res.status === 400 && /invalid start time/i.test(msg)) {
               // The event on GCal's side is stuck in a state PATCH can't reconcile
               // (e.g. it was created as an all-day event and can't be converted to
-              // a timed one in place) — clear the stale ID and create fresh instead.
+              // a timed one in place) — delete the stuck event first, THEN create
+              // fresh. Without the delete, the old event is orphaned on Google's
+              // side and shows up as a duplicate alongside the new one.
+              await deleteFromGCal(entry, true);
               entry.gcalEventId = null;
               save();
               await pushToGCal(entry, silent);
@@ -9947,9 +9950,17 @@
       // ── Changelog ──────────────────────────────────────────────────────────────
       const CHANGELOG = [
         {
-          version: "v1.9.1",
+          version: "v1.9.2",
           date: "August 27, 2026",
           latest: true,
+          items: [
+            "Fixed: switching an entry from all-day to a specific time could leave a duplicate leftover event on Google Calendar instead of updating it in place",
+          ],
+        },
+        {
+          version: "v1.9.1",
+          date: "August 27, 2026",
+          latest: false,
           items: [
             "Fixed: the calendar edit modal closed if you clicked outside it, easy to trigger by accident mid-edit — it now only closes via Cancel, Save, or Escape",
           ],
