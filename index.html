@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.9.5 --><!doctype html>
+<!-- Work Log DEV v1.9.6 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -3015,7 +3015,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.9.5</span
+            >/ v1.9.6</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -8658,6 +8658,9 @@ async function gcalVerifyEventIds() {
       if (gone) {
         e.gcalEventId = null;
         e.gcalPending = true;
+        // Bump so the cleared id wins the next merge instead of the dead id
+        // being copied back from another device's copy.
+        touchEntry(e);
       }
     } catch {}
   };
@@ -9882,13 +9885,21 @@ function saveSettings() {
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
+    version: "v1.9.6",
+    date: "September 30, 2026",
+    latest: true,
+    items: [
+      "Fixed: when the reconnect check found an event deleted in Google Calendar, a later cross-device sync could bring the dead event id back — the cleared id now sticks",
+    ],
+  },
+  {
     version: "v1.9.5",
     date: "September 24, 2026",
-    latest: true,
+    latest: false,
     items: [
       "Fixed: entries could appear twice on Google Calendar — reconnecting (or a sign-in delivered twice) could run two syncs at once, and a lost reply from Google could trigger a second create. Each entry is now pushed one at a time, tagged, and looked up before creating",
       "Fixed: an entry whose Google event was deleted in Google Calendar never came back, even after editing — reconnecting now checks each upcoming entry's event and recreates any that are gone",
-      "Sync no longer silently skips an update when Google is disconnected — the entry is marked \"not in Google Calendar yet\" (count shown next to the sync status) and retried on the next reconnect",
+      'Sync no longer silently skips an update when Google is disconnected — the entry is marked "not in Google Calendar yet" (count shown next to the sync status) and retried on the next reconnect',
     ],
   },
   {
