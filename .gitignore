@@ -9,6 +9,7 @@
 !/index.html
 !/ce-logo.png
 !/build.ps1
+!/README.md
 !/1. Project/
 !/PROJECT_BACKUP/
 
@@ -29,3 +30,4 @@
 *.docx
 *.pptx
 *.doc
+
