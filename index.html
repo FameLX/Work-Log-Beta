@@ -1,4 +1,4 @@
-<!-- Work Log v2.1.1 --><!doctype html>
+<!-- Work Log DEV v1.9.6 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -10,16 +10,16 @@
       // the same thing with full state (saved-theme lookup etc.).
       (function () {
         try {
-          var cur = localStorage.getItem("wl2_current_theme") || "default";
+          var cur = localStorage.getItem("wl2dev_current_theme") || "default";
           var root = document.documentElement;
           var tokens = null;
           if (cur === "custom") {
             tokens = JSON.parse(
-              localStorage.getItem("wl2_custom_tokens") || "{}",
+              localStorage.getItem("wl2dev_custom_tokens") || "{}",
             );
           } else if (cur.indexOf("saved:") === 0) {
             var list = JSON.parse(
-              localStorage.getItem("wl2_saved_themes") || "[]",
+              localStorage.getItem("wl2dev_saved_themes") || "[]",
             );
             for (var i = 0; i < list.length; i++)
               if ("saved:" + list[i].id === cur) tokens = list[i].tokens;
@@ -3009,13 +3009,13 @@
             src="ce-logo.png"
             alt="Carrier Engagement"
             style="height: 32px; width: auto; display: block"
-          />Work Log
+          />Work Log DEV
           <span
             id="version-pill"
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v2.1.1</span
+            >/ v1.9.6</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -4546,23 +4546,53 @@
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
     <script>
+// ── One-time migration: dev/beta used to share the 'wl2_' keys with
+// production (same GitHub Pages origin). Copy any old shared data into the
+// new 'wl2dev_' namespace once, without touching or deleting the old keys —
+// production keeps reading 'wl2_' untouched.
+(function migrateToDevNamespace() {
+  if (localStorage.getItem("wl2dev_migrated")) return;
+  const oldKeys = [
+    "wl2_archived",
+    "wl2_current_theme",
+    "wl2_custom_tokens",
+    "wl2_custom_type_order",
+    "wl2_custom_types",
+    "wl2_entries",
+    "wl2_gcal_client_id",
+    "wl2_gcal_token",
+    "wl2_saved_themes",
+    "wl2_trash",
+    "wl2_type_colors",
+    "wl2_type_gcal_ids",
+    "wl2_type_order",
+  ];
+  oldKeys.forEach((oldKey) => {
+    const newKey = oldKey.replace("wl2_", "wl2dev_");
+    if (localStorage.getItem(newKey) === null) {
+      const oldVal = localStorage.getItem(oldKey);
+      if (oldVal !== null) localStorage.setItem(newKey, oldVal);
+    }
+  });
+  localStorage.setItem("wl2dev_migrated", "1");
+})();
 // Retro-fix: the original migration list omitted wl2_custom_tokens, so users
 // who already migrated kept a custom theme name with an empty palette. This
 // runs outside the migrated guard and is idempotent.
 if (
-  localStorage.getItem("wl2_custom_tokens") === null &&
+  localStorage.getItem("wl2dev_custom_tokens") === null &&
   localStorage.getItem("wl2_custom_tokens") !== null
 ) {
   localStorage.setItem(
-    "wl2_custom_tokens",
+    "wl2dev_custom_tokens",
     localStorage.getItem("wl2_custom_tokens"),
   );
 }
 
 // ── State ──────────────────────────────────────────────────────────────────
-let entries = JSON.parse(localStorage.getItem("wl2_entries") || "[]");
-let archived = JSON.parse(localStorage.getItem("wl2_archived") || "[]");
-let trash = JSON.parse(localStorage.getItem("wl2_trash") || "[]");
+let entries = JSON.parse(localStorage.getItem("wl2dev_entries") || "[]");
+let archived = JSON.parse(localStorage.getItem("wl2dev_archived") || "[]");
+let trash = JSON.parse(localStorage.getItem("wl2dev_trash") || "[]");
 // Migration: add updated field to old entries that don't have it
 entries.forEach((e) => {
   if (!e.updated) e.updated = e.created;
@@ -4583,18 +4613,18 @@ trash.forEach((e) => {
   const before = trash.length;
   trash = trash.filter((e) => new Date(e.deletedAt).getTime() > cutoff);
   if (trash.length !== before)
-    localStorage.setItem("wl2_trash", JSON.stringify(trash));
+    localStorage.setItem("wl2dev_trash", JSON.stringify(trash));
 })();
 let viewMode = "active"; // 'active' or 'archive'
 let viewLayout = "calendar"; // always start on calendar — list is a per-session choice, never persisted
-let calView = localStorage.getItem("wl2_cal_view") || "month"; // 'month' or 'year'
+let calView = localStorage.getItem("wl2dev_cal_view") || "month"; // 'month' or 'year'
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth(); // 0-11, displayed calendar month
 let calEntryId = null; // entry shown in the calendar popover
 let calArchIdSet = new Set(); // archived entry ids currently shown in the month grid
 let searchQuery = "";
-let gcalToken = localStorage.getItem("wl2_gcal_token") || null;
-let gcalClientId = localStorage.getItem("wl2_gcal_client_id") || "";
+let gcalToken = localStorage.getItem("wl2dev_gcal_token") || null;
+let gcalClientId = localStorage.getItem("wl2dev_gcal_client_id") || "";
 let selectedFilterTypes = []; // empty = All
 let sortMode = "deadline";
 let sortDir = "desc"; // deadline default: furthest first
@@ -4616,15 +4646,15 @@ function buildGTaskTitle(entry) {
   return entry.time ? `${fmtTime12(entry.time)} | ${entry.name}` : entry.name;
 }
 let customTypes = JSON.parse(
-  localStorage.getItem("wl2_custom_types") || "[]",
+  localStorage.getItem("wl2dev_custom_types") || "[]",
 );
 let customTypeOrder = JSON.parse(
-  localStorage.getItem("wl2_custom_type_order") || "[]",
+  localStorage.getItem("wl2dev_custom_type_order") || "[]",
 );
-let typeOrder = JSON.parse(localStorage.getItem("wl2_type_order") || "[]");
-let typeColors = JSON.parse(localStorage.getItem("wl2_type_colors") || "{}");
+let typeOrder = JSON.parse(localStorage.getItem("wl2dev_type_order") || "[]");
+let typeColors = JSON.parse(localStorage.getItem("wl2dev_type_colors") || "{}");
 let typeGCalIds = JSON.parse(
-  localStorage.getItem("wl2_type_gcal_ids") || "{}",
+  localStorage.getItem("wl2dev_type_gcal_ids") || "{}",
 );
 
 function allTypes() {
@@ -5441,22 +5471,22 @@ async function saveEdit(id) {
 }
 
 function save() {
-  localStorage.setItem("wl2_entries", JSON.stringify(entries));
-  localStorage.setItem("wl2_archived", JSON.stringify(archived));
+  localStorage.setItem("wl2dev_entries", JSON.stringify(entries));
+  localStorage.setItem("wl2dev_archived", JSON.stringify(archived));
   syncDirty = true;
   scheduleSync();
 }
 function saveTrash() {
-  localStorage.setItem("wl2_trash", JSON.stringify(trash));
+  localStorage.setItem("wl2dev_trash", JSON.stringify(trash));
   syncDirty = true;
 }
 // Persist all lists WITHOUT marking data dirty or scheduling a sync — for the
 // merge itself, whose writes must never re-arm the next sync (that was the
 // v1.6.17-26 infinite 4-second sync loop).
 function persistMerged() {
-  localStorage.setItem("wl2_entries", JSON.stringify(entries));
-  localStorage.setItem("wl2_archived", JSON.stringify(archived));
-  localStorage.setItem("wl2_trash", JSON.stringify(trash));
+  localStorage.setItem("wl2dev_entries", JSON.stringify(entries));
+  localStorage.setItem("wl2dev_archived", JSON.stringify(archived));
+  localStorage.setItem("wl2dev_trash", JSON.stringify(trash));
   saveTombstones();
 }
 
@@ -7040,7 +7070,7 @@ function calSetYear(y) {
 }
 function calSetCalView(v) {
   calView = v;
-  localStorage.setItem("wl2_cal_view", v);
+  localStorage.setItem("wl2dev_cal_view", v);
   render();
 }
 function calOpenMonth(m) {
@@ -7052,7 +7082,7 @@ function calOpenDayFromYear(ds) {
   calYear = parseInt(p[0]);
   calMonth = parseInt(p[1]) - 1;
   calView = "month";
-  localStorage.setItem("wl2_cal_view", "month");
+  localStorage.setItem("wl2dev_cal_view", "month");
   render();
   openCalDay(ds);
 }
@@ -8440,7 +8470,7 @@ document
 
 function gcalDisconnect() {
   gcalToken = null;
-  localStorage.removeItem("wl2_gcal_token");
+  localStorage.removeItem("wl2dev_gcal_token");
   clearGCalExpired();
   document.getElementById("gcal-pill").classList.remove("connected");
   document.getElementById("gcal-pill-text").textContent =
@@ -8463,7 +8493,7 @@ function gcalAuthorise() {
     return;
   }
   gcalClientId = cid;
-  localStorage.setItem("wl2_gcal_client_id", cid);
+  localStorage.setItem("wl2dev_gcal_client_id", cid);
   const scope = encodeURIComponent(
     "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/drive.appdata",
   );
@@ -8509,7 +8539,7 @@ function gcalSaveToken() {
 // automatic postMessage capture and by the manual-paste fallback.
 function gcalApplyToken(t) {
   gcalToken = t;
-  localStorage.setItem("wl2_gcal_token", t);
+  localStorage.setItem("wl2dev_gcal_token", t);
   clearGCalExpired();
   document.getElementById("gcal-pill").classList.add("connected");
   document.getElementById("gcal-pill-text").textContent = "Calendar connected";
@@ -9009,27 +9039,27 @@ async function deleteFromGTask(entry, silent = false) {
 // id, newest effective timestamp wins per entry; tombstones (permanent
 // deletes) kill an entry everywhere unless it was edited after the delete.
 // Theme/UI settings deliberately NOT synced (per-device preference).
-const SYNC_NS = "wl2_"; 
+const SYNC_NS = "wl2dev_"; // becomes 'wl2_' via the production promotion transform
 const SYNC_FILE_NAME =
   SYNC_NS === "wl2_" ? "worklog-sync.json" : "worklog-dev-sync.json";
-let tombstones = JSON.parse(localStorage.getItem("wl2_tombstones") || "[]"); // [{id, ts}]
+let tombstones = JSON.parse(localStorage.getItem("wl2dev_tombstones") || "[]"); // [{id, ts}]
 let typeTombstones = JSON.parse(
-  localStorage.getItem("wl2_type_tombstones") || "[]",
+  localStorage.getItem("wl2dev_type_tombstones") || "[]",
 ); // [{name, ts}] — deleted custom types, so a union merge doesn't resurrect them
 function saveTypeTombstones() {
   localStorage.setItem(
-    "wl2_type_tombstones",
+    "wl2dev_type_tombstones",
     JSON.stringify(typeTombstones),
   );
 }
-let syncFileId = localStorage.getItem("wl2_sync_file_id") || null;
+let syncFileId = localStorage.getItem("wl2dev_sync_file_id") || null;
 let syncInProgress = false;
 let syncDebounceTimer = null;
 let syncPendingAgain = false; // a save happened while a sync was in flight
 let syncDirty = false; // local data changed since the last successful upload
 
 function saveTombstones() {
-  localStorage.setItem("wl2_tombstones", JSON.stringify(tombstones));
+  localStorage.setItem("wl2dev_tombstones", JSON.stringify(tombstones));
 }
 function addTombstones(ids) {
   const ts = Date.now();
@@ -9062,7 +9092,7 @@ function buildSyncPayload() {
   return {
     version: 1,
     savedAt: new Date().toISOString(),
-    settingsUpdatedAt: localStorage.getItem("wl2_settings_updated") || "",
+    settingsUpdatedAt: localStorage.getItem("wl2dev_settings_updated") || "",
     entries,
     archived,
     trash,
@@ -9243,7 +9273,7 @@ function mergeSync(remote) {
   // Per-field conflicts (colour, GCal id, order) are settled by whichever
   // side has the newer settings stamp. Deletions travel via typeTombstones
   // so a union merge doesn't resurrect a type someone removed on purpose.
-  const localTs = localStorage.getItem("wl2_settings_updated") || "";
+  const localTs = localStorage.getItem("wl2dev_settings_updated") || "";
   const remoteTs = remote.settingsUpdatedAt || "";
   if (Array.isArray(remote.customTypes)) {
     const remoteNewer = remoteTs > localTs;
@@ -9312,15 +9342,15 @@ function mergeSync(remote) {
       .map((n) => ({ name: n, ts: typeTombMap[n] }));
     saveTypeTombstones();
 
-    localStorage.setItem("wl2_custom_types", JSON.stringify(customTypes));
-    localStorage.setItem("wl2_type_colors", JSON.stringify(typeColors));
-    localStorage.setItem("wl2_type_gcal_ids", JSON.stringify(typeGCalIds));
+    localStorage.setItem("wl2dev_custom_types", JSON.stringify(customTypes));
+    localStorage.setItem("wl2dev_type_colors", JSON.stringify(typeColors));
+    localStorage.setItem("wl2dev_type_gcal_ids", JSON.stringify(typeGCalIds));
     localStorage.setItem(
-      "wl2_custom_type_order",
+      "wl2dev_custom_type_order",
       JSON.stringify(customTypeOrder),
     );
-    localStorage.setItem("wl2_type_order", JSON.stringify(typeOrder));
-    if (remoteNewer) localStorage.setItem("wl2_settings_updated", remoteTs);
+    localStorage.setItem("wl2dev_type_order", JSON.stringify(typeOrder));
+    if (remoteNewer) localStorage.setItem("wl2dev_settings_updated", remoteTs);
     populateTypeSelects();
   }
 
@@ -9361,9 +9391,9 @@ async function performSync(manual = false) {
   updateSyncStatusUI("Syncing…");
   try {
     // One-time safety snapshot of local data before the first merge ever runs
-    if (!localStorage.getItem("wl2_pre_sync_backup")) {
+    if (!localStorage.getItem("wl2dev_pre_sync_backup")) {
       localStorage.setItem(
-        "wl2_pre_sync_backup",
+        "wl2dev_pre_sync_backup",
         JSON.stringify({
           at: new Date().toISOString(),
           entries,
@@ -9407,10 +9437,10 @@ async function performSync(manual = false) {
       }
       if (newId && newId !== syncFileId) {
         syncFileId = newId;
-        localStorage.setItem("wl2_sync_file_id", newId);
+        localStorage.setItem("wl2dev_sync_file_id", newId);
       }
     }
-    localStorage.setItem("wl2_last_sync", new Date().toISOString());
+    localStorage.setItem("wl2dev_last_sync", new Date().toISOString());
     if (stats.pulled || stats.removed) {
       // Never re-render over an open inline edit — it would rebuild the card
       // from stored state and wipe the user's typing. The save/cancel that
@@ -9462,7 +9492,7 @@ function updateSyncStatusUI(override) {
     el.textContent = override;
     return;
   }
-  const last = localStorage.getItem("wl2_last_sync");
+  const last = localStorage.getItem("wl2dev_last_sync");
   const pend = gcalPendingCount();
   el.textContent =
     (last
@@ -9552,7 +9582,7 @@ let pendingCustomEdited = false; // user tweaked individual colours (a custom lo
 function activeThemeName() {
   return pendingTheme !== null
     ? pendingTheme
-    : localStorage.getItem("wl2_current_theme") || "default";
+    : localStorage.getItem("wl2dev_current_theme") || "default";
 }
 
 function openSettings() {
@@ -9566,7 +9596,7 @@ function openSettings() {
     savedThemes: JSON.stringify(savedThemes),
   };
   settingsDirty = false;
-  pendingTheme = localStorage.getItem("wl2_current_theme") || "default";
+  pendingTheme = localStorage.getItem("wl2dev_current_theme") || "default";
   pendingCustomEdited = false;
   buildSettingsUI();
   document.getElementById("settings-overlay").classList.add("open");
@@ -9595,7 +9625,7 @@ function discardSettingsChanges() {
   BUILTIN_TYPES.length = 0;
   BUILTIN_TYPES.push(...settingsSnapshot.builtinTypes);
   savedThemes = JSON.parse(settingsSnapshot.savedThemes);
-  localStorage.setItem("wl2_saved_themes", JSON.stringify(savedThemes));
+  localStorage.setItem("wl2dev_saved_themes", JSON.stringify(savedThemes));
   pendingTheme = null;
   pendingCustomEdited = false;
   loadTheme();
@@ -9793,14 +9823,14 @@ function saveSettings() {
     }
     if (gcalEl) typeGCalIds[t] = gcalEl.value;
   });
-  localStorage.setItem("wl2_type_colors", JSON.stringify(typeColors));
-  localStorage.setItem("wl2_type_gcal_ids", JSON.stringify(typeGCalIds));
-  localStorage.setItem("wl2_custom_types", JSON.stringify(customTypes));
+  localStorage.setItem("wl2dev_type_colors", JSON.stringify(typeColors));
+  localStorage.setItem("wl2dev_type_gcal_ids", JSON.stringify(typeGCalIds));
+  localStorage.setItem("wl2dev_custom_types", JSON.stringify(customTypes));
   localStorage.setItem(
-    "wl2_custom_type_order",
+    "wl2dev_custom_type_order",
     JSON.stringify(customTypeOrder),
   );
-  localStorage.setItem("wl2_type_order", JSON.stringify(typeOrder));
+  localStorage.setItem("wl2dev_type_order", JSON.stringify(typeOrder));
   // Only stamp settings_updated when the SYNCED part (types, order, colours,
   // GCal ids) actually changed. Themes stay per-device, so a theme-only save
   // must not advance the stamp — otherwise this device's possibly-stale type
@@ -9825,21 +9855,21 @@ function saveSettings() {
       })
     : null;
   if (before === null || before !== typeFingerprint()) {
-    localStorage.setItem("wl2_settings_updated", new Date().toISOString());
+    localStorage.setItem("wl2dev_settings_updated", new Date().toISOString());
     syncDirty = true;
     scheduleSync();
   }
 
   // Commit the previewed theme (deferred until Save)
   if (pendingCustomEdited) {
-    localStorage.setItem("wl2_current_theme", "custom");
+    localStorage.setItem("wl2dev_current_theme", "custom");
     localStorage.setItem(
-      "wl2_custom_tokens",
+      "wl2dev_custom_tokens",
       JSON.stringify(readCurrentTokens()),
     );
   } else if (pendingTheme !== null && pendingTheme !== "custom") {
-    localStorage.setItem("wl2_current_theme", pendingTheme);
-    localStorage.removeItem("wl2_custom_tokens");
+    localStorage.setItem("wl2dev_current_theme", pendingTheme);
+    localStorage.removeItem("wl2dev_custom_tokens");
   }
   pendingTheme = null;
   pendingCustomEdited = false;
@@ -9855,51 +9885,101 @@ function saveSettings() {
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: "v2.1.1",
+    version: "v1.9.6",
     date: "September 30, 2026",
     latest: true,
     items: [
-      "Fixed: entries could appear twice on Google Calendar — reconnecting (or a sign-in delivered twice) could run two syncs at once, and a lost reply from Google could trigger a second create. Each entry is now pushed one at a time, tagged, and looked up before creating",
-      "Fixed: an entry whose Google event was deleted in Google Calendar never came back, even after editing — reconnecting now checks each upcoming entry's event and recreates any that are gone",
-      "Sync no longer silently skips an update when Google is disconnected — the entry is marked \"not in Google Calendar yet\" (count shown next to the sync status) and retried on the next reconnect",
+      "Fixed: when the reconnect check found an event deleted in Google Calendar, a later cross-device sync could bring the dead event id back — the cleared id now sticks",
     ],
   },
   {
-    version: "v2.1.0",
+    version: "v1.9.5",
+    date: "September 24, 2026",
+    latest: false,
+    items: [
+      "Fixed: entries could appear twice on Google Calendar — reconnecting (or a sign-in delivered twice) could run two syncs at once, and a lost reply from Google could trigger a second create. Each entry is now pushed one at a time, tagged, and looked up before creating",
+      "Fixed: an entry whose Google event was deleted in Google Calendar never came back, even after editing — reconnecting now checks each upcoming entry's event and recreates any that are gone",
+      'Sync no longer silently skips an update when Google is disconnected — the entry is marked "not in Google Calendar yet" (count shown next to the sync status) and retried on the next reconnect',
+    ],
+  },
+  {
+    version: "v1.9.4",
     date: "September 23, 2026",
     latest: false,
     items: [
-      "Calendar: checking a task's checkbox now automatically archives it; unchecking a task in the archive restores it to active",
-      "Fixed: restoring a completed task from the archive left it stuck marked done, and unchecking it afterward created a duplicate — restoring a task now clears its done state properly",
-      "Fixed: on mobile, multi-day calendar entries (e.g. an event spanning two days) could appear shifted under the wrong date column until you scrolled the calendar sideways — the entry bar now scrolls in lockstep with the day columns",
-      'Fixed: a day could show "+N more" with none of its own entries visible, even with just 2-3 entries — caused by a multi-day event elsewhere in the same week eating into every day\'s space; unrelated days now keep their full room',
-      "List view: hold down an entry to select it (mobile) alongside the existing Select button (desktop); selected entries can now be moved to a new date, in addition to archive/delete",
-      "Fixed: the calendar edit modal closed if you clicked outside it, easy to trigger by accident mid-edit — it now only closes via Cancel, Save, or Escape",
-      "Fixed: switching an entry from all-day to a specific time could leave a duplicate leftover event on Google Calendar instead of updating it in place",
-      "Fixed: all-day entries synced to Google Calendar were created with no duration, so they never appeared in the iOS Calendar widget (they did show inside the Google Calendar app) — single-day all-day entries now cover a full day",
+      "Fixed: all-day entries synced to Google Calendar were created with no duration, so they never appeared in the iOS Calendar widget (they showed in the Google Calendar app itself) — single-day all-day entries now cover a full day",
     ],
   },
   {
-    version: "v2.0.1",
+    version: "v1.9.3",
+    date: "August 27, 2026",
+    latest: false,
+    items: [
+      "Under the hood: the app source is now split into three files (HTML, CSS, JavaScript) and assembled into this single page by a build step — no visible change",
+    ],
+  },
+  {
+    version: "v1.9.2",
+    date: "August 27, 2026",
+    latest: false,
+    items: [
+      "Fixed: switching an entry from all-day to a specific time could leave a duplicate leftover event on Google Calendar instead of updating it in place",
+    ],
+  },
+  {
+    version: "v1.9.1",
+    date: "August 27, 2026",
+    latest: false,
+    items: [
+      "Fixed: the calendar edit modal closed if you clicked outside it, easy to trigger by accident mid-edit — it now only closes via Cancel, Save, or Escape",
+    ],
+  },
+  {
+    version: "v1.9.0",
+    date: "August 27, 2026",
+    latest: false,
+    items: [
+      "List view: hold down an entry to select it (mobile) alongside the existing Select button (desktop); selected entries can now be moved to a new date, in addition to archive/delete",
+    ],
+  },
+  {
+    version: "v1.8.24",
+    date: "August 25, 2026",
+    latest: false,
+    items: [
+      'Fixed: a day could show "+N more" with none of its own entries visible, even with just 2-3 entries — caused by a multi-day event elsewhere in the same week eating into every day\'s space; unrelated days now keep their full room',
+    ],
+  },
+  {
+    version: "v1.8.23",
+    date: "August 25, 2026",
+    latest: false,
+    items: [
+      "Fixed: on mobile, multi-day calendar entries (e.g. an event spanning two days) could appear shifted under the wrong date column until you scrolled the calendar sideways — the entry bar now scrolls in lockstep with the day columns",
+    ],
+  },
+  {
+    version: "v1.8.22",
+    date: "August 21, 2026",
+    latest: false,
+    items: [
+      "Fixed: restoring a completed task from the archive left it stuck marked done, and unchecking it afterward created a duplicate — restoring a task now clears its done state properly",
+    ],
+  },
+  {
+    version: "v1.8.21",
+    date: "August 21, 2026",
+    latest: false,
+    items: [
+      "Calendar: checking a task's checkbox now automatically archives it; unchecking a task in the archive restores it to active",
+    ],
+  },
+  {
+    version: "v1.8.20",
     date: "August 21, 2026",
     latest: false,
     items: [
       "Fixed: syncing across devices could wipe out custom task types and colours — cross-device type sync now merges both devices' types together instead of one side's list replacing the other's",
-    ],
-  },
-  {
-    version: "v2.0.0",
-    date: "August 18, 2026",
-    latest: false,
-    items: [
-      "Work Log 2.0 — a fresh start. Everything from the v1.8 beta line is now in production:",
-      "Calendar view (month / year) alongside the list, with quick add, day and entry popups, multi-day bars",
-      "Cross-device sync via Google Drive, plus Google Calendar / Tasks push with duplicate protection",
-      "New date fields: locked dd / mm / yyyy blocks — click a block, type to overwrite, Backspace clears the block",
-      "Repeat entries, Trash with confirmation and Undo, bulk select / archive / delete",
-      "Themes (Default, Dark, Dusty Pink, Twilight Sky, Neon Twilight, Woodland) + custom theme editor",
-      "Phone layout: floating + button, full-screen entry form, toasts at top that never block taps",
-      "Accessibility pass: keyboard-reachable calendar chips, labelled date blocks, focus rings, reduced-motion support",
     ],
   },
   {
@@ -11377,7 +11457,7 @@ const THEME_TOKENS = [
 ];
 
 let savedThemes = JSON.parse(
-  localStorage.getItem("wl2_saved_themes") || "[]",
+  localStorage.getItem("wl2dev_saved_themes") || "[]",
 );
 
 function normalizeHex(v) {
@@ -11535,7 +11615,7 @@ function saveCustomTheme() {
   const tokens = readCurrentTokens();
   const id = "t" + Date.now();
   savedThemes.push({ id, name, tokens });
-  localStorage.setItem("wl2_saved_themes", JSON.stringify(savedThemes));
+  localStorage.setItem("wl2dev_saved_themes", JSON.stringify(savedThemes));
   nameInput.value = "";
   applySavedTheme(id);
   toast('Theme "' + name + '" saved');
@@ -11557,7 +11637,7 @@ function applySavedTheme(id) {
 
 function deleteSavedTheme(id) {
   savedThemes = savedThemes.filter((t) => t.id !== id);
-  localStorage.setItem("wl2_saved_themes", JSON.stringify(savedThemes));
+  localStorage.setItem("wl2dev_saved_themes", JSON.stringify(savedThemes));
   if (activeThemeName() === "saved:" + id) {
     switchTheme("default");
   }
@@ -11569,7 +11649,7 @@ function renameSavedTheme(id, value) {
   const th = savedThemes.find((t) => t.id === id);
   if (!th) return;
   th.name = (value || "").trim() || th.name;
-  localStorage.setItem("wl2_saved_themes", JSON.stringify(savedThemes));
+  localStorage.setItem("wl2dev_saved_themes", JSON.stringify(savedThemes));
 }
 
 function renderSavedThemes() {
@@ -11604,11 +11684,11 @@ function renderSavedThemes() {
 
 // Apply the stored theme on page load (no UI side-effects — settings isn't built yet).
 function loadTheme() {
-  const cur = localStorage.getItem("wl2_current_theme") || "default";
+  const cur = localStorage.getItem("wl2dev_current_theme") || "default";
   clearThemeOverrides();
   if (cur === "custom") {
     const tokens = JSON.parse(
-      localStorage.getItem("wl2_custom_tokens") || "{}",
+      localStorage.getItem("wl2dev_custom_tokens") || "{}",
     );
     document.documentElement.className = "theme-custom";
     applyTokenSet(tokens);
