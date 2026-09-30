@@ -1,4 +1,4 @@
-<!-- Work Log DEV v1.9.4 --><!doctype html>
+<!-- Work Log DEV v1.9.5 --><!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -3015,7 +3015,7 @@
             onclick="openChangelog()"
             style="cursor: pointer; text-decoration: none; user-select: none"
             title="View changelog"
-            >/ v1.9.4</span
+            >/ v1.9.5</span
           >
         </div>
         <div class="topbar-spacer"></div>
@@ -8550,7 +8550,17 @@ function gcalApplyToken(t) {
   fetchGCalColors();
   // Cross-device sync FIRST — entries pulled from other devices may already
   // carry gcalEventIds, which keeps the GCal push below from duplicating them.
-  setTimeout(async () => {
+  setTimeout(gcalReconnectPush, 500);
+}
+
+// Only one reconnect-and-push may run at a time: the sign-in token can be
+// delivered more than once, and two overlapping runs each see the same
+// entries as un-synced and each create a Google event for them.
+let gcalReconnectRunning = false;
+async function gcalReconnectPush() {
+  if (gcalReconnectRunning) return;
+  gcalReconnectRunning = true;
+  try {
     // If a sync is already in flight, wait it out — calling performSync now
     // would no-op instantly and the push below would run before the pull,
     // creating duplicate calendar events.
@@ -8574,11 +8584,16 @@ function gcalApplyToken(t) {
       );
       return;
     }
-    // Only push entries that have never been synced — entries with a gcalEventId
-    // already exist in GCal and will be PATCHed on next manual save, so skip them
-    // to avoid duplicates on reconnect.
+    // Entries that hold an event id may have had that event deleted on
+    // Google's side — clear those ids so they are recreated below.
+    await gcalVerifyEventIds();
+    // Push entries with no event yet, plus any whose last push/update failed
+    // or was skipped (no live token) and is still marked pending.
     const unsynced = entries.filter(
-      (e) => e.deadline && !e.gcalEventId && e.syncMode !== "task",
+      (e) =>
+        e.deadline &&
+        e.syncMode !== "task" &&
+        (!e.gcalEventId || e.gcalPending),
     );
     const unsyncedTasks = entries.filter(
       (e) => e.deadline && !e.gcalTaskId && e.syncMode === "task",
@@ -8586,16 +8601,72 @@ function gcalApplyToken(t) {
     const total = unsynced.length + unsyncedTasks.length;
     if (total > 0) {
       toast(
-        `Syncing ${total} new ${total === 1 ? "entry" : "entries"} to Google Calendar…`,
+        `Syncing ${total} ${total === 1 ? "entry" : "entries"} to Google Calendar…`,
         3000,
       );
       for (const e of unsynced) await pushToGCal(e, true);
       for (const e of unsyncedTasks) await pushToGTask(e, true);
+      const left = gcalPendingCount();
       toast(
-        `Done! ${total} ${total === 1 ? "entry" : "entries"} synced to Google Calendar.`,
+        left
+          ? `${total - left} of ${total} synced — ${left} still not synced, will retry on next reconnect.`
+          : `Done! ${total} ${total === 1 ? "entry" : "entries"} synced to Google Calendar.`,
       );
     }
-  }, 500);
+  } finally {
+    gcalReconnectRunning = false;
+  }
+}
+
+// Marks/clears an entry as "not yet in sync with Google Calendar". Shown as a
+// count next to the sync status and retried on every reconnect.
+function gcalMarkPending(entry, pending) {
+  if (!!entry.gcalPending === pending) return;
+  if (pending) entry.gcalPending = true;
+  else delete entry.gcalPending;
+  save();
+  updateSyncStatusUI();
+}
+function gcalPendingCount() {
+  return entries.filter((e) => e.gcalPending && e.syncMode !== "task").length;
+}
+
+// Asks Google whether each upcoming entry's event still exists. Gone (404 /
+// 410 / status cancelled) -> clear the id and mark pending so it is recreated.
+// Anything unclear (network, 5xx) leaves the entry alone.
+async function gcalVerifyEventIds() {
+  const todayStr = today();
+  const todo = entries.filter(
+    (e) =>
+      e.gcalEventId &&
+      e.syncMode !== "task" &&
+      e.deadline &&
+      (e.deadlineEnd || e.deadline) >= todayStr,
+  );
+  const check = async (e) => {
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${e.gcalEventId}`,
+        { headers: { Authorization: `Bearer ${gcalToken}` } },
+      );
+      checkGCalAuthExpired(res);
+      let gone = res.status === 404 || res.status === 410;
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        gone = data?.status === "cancelled";
+      }
+      if (gone) {
+        e.gcalEventId = null;
+        e.gcalPending = true;
+      }
+    } catch {}
+  };
+  for (let i = 0; i < todo.length; i += 5)
+    await Promise.all(todo.slice(i, i + 5).map(check));
+  if (todo.some((e) => !e.gcalEventId)) {
+    save();
+    updateSyncStatusUI();
+  }
 }
 
 async function syncAllToGCal(silent = false) {
@@ -8663,13 +8734,52 @@ function buildGCalEvent(entry) {
     description: desc,
     start,
     end,
+    // Lets us find this event again by entry id (see gcalFindTaggedEvent)
+    extendedProperties: { private: { wlId: String(entry.id) } },
     ...(colorId && { colorId }),
   };
 }
 
-async function pushToGCal(entry, silent = false) {
-  if (!gcalToken || !entry?.deadline) {
+// One push per entry at a time: a second caller (card button, Sync-all,
+// reconnect scan, add) joins the push already running instead of starting its
+// own — two concurrent pushes of an id-less entry create two Google events.
+const gcalPushInFlight = new Map();
+function pushToGCal(entry, silent = false) {
+  if (!entry) return Promise.resolve();
+  if (gcalPushInFlight.has(entry.id)) return gcalPushInFlight.get(entry.id);
+  const p = pushToGCalOnce(entry, silent).finally(() =>
+    gcalPushInFlight.delete(entry.id),
+  );
+  gcalPushInFlight.set(entry.id, p);
+  return p;
+}
+
+// Finds an event this app already created for the entry (tagged with the
+// entry id), e.g. when the reply to an earlier create was lost or another
+// tab/device pushed it first. Returns the event id, or null. Throws on
+// failure so the caller never creates blind when it could not check.
+async function gcalFindTaggedEvent(entry) {
+  const res = await fetch(
+    "https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=5&privateExtendedProperty=" +
+      encodeURIComponent("wlId=" + entry.id),
+    { headers: { Authorization: `Bearer ${gcalToken}` } },
+  );
+  checkGCalAuthExpired(res);
+  if (!res.ok) throw new Error("lookup failed: HTTP " + res.status);
+  const data = await res.json();
+  const hit = (data.items || []).find((ev) => ev.status !== "cancelled");
+  return hit ? hit.id : null;
+}
+
+async function pushToGCalOnce(entry, silent = false) {
+  if (!entry?.deadline) {
     if (!silent) toast("No deadline set.");
+    return;
+  }
+  if (!gcalToken || gcalExpired) {
+    // Not lost: flagged so the next reconnect pushes it.
+    gcalMarkPending(entry, true);
+    if (!silent) toast("No live Google connection — will sync on reconnect.");
     return;
   }
   try {
@@ -8678,7 +8788,15 @@ async function pushToGCal(entry, silent = false) {
       await patchGCal(entry, silent);
       return;
     }
-    // ── No ID: create new event ───────────────────────────────────────────
+    // ── No ID: adopt an event we already created, else create a new one ───
+    const existing = await gcalFindTaggedEvent(entry);
+    if (existing) {
+      entry.gcalEventId = existing;
+      touchEntry(entry);
+      save();
+      await patchGCal(entry, silent);
+      return;
+    }
     const res = await fetch(
       "https://www.googleapis.com/calendar/v3/calendars/primary/events",
       {
@@ -8694,26 +8812,35 @@ async function pushToGCal(entry, silent = false) {
     if (res.ok) {
       const created = await res.json();
       entry.gcalEventId = created.id;
+      delete entry.gcalPending;
       // Bump the timestamp: without it the id can lose a merge tie to an
       // id-less copy on another device, which then creates a duplicate event.
       touchEntry(entry);
       save();
+      updateSyncStatusUI();
       if (!silent) toast(`"${entry.name}" added to Google Calendar.`);
     } else {
-      const err = await res.json();
+      const err = await res.json().catch(() => null);
+      gcalMarkPending(entry, true);
       if (!silent)
         toast(
           "Calendar error — " +
-            (err.error?.message || "token may have expired."),
+            (err?.error?.message || "token may have expired."),
         );
     }
   } catch (e) {
+    gcalMarkPending(entry, true);
     if (!silent) toast("Could not reach Google Calendar.");
   }
 }
 
 async function patchGCal(entry, silent = false) {
-  if (!gcalToken || !entry?.gcalEventId) return;
+  if (!entry?.gcalEventId) return;
+  if (!gcalToken || gcalExpired) {
+    gcalMarkPending(entry, true);
+    if (!silent) toast("No live Google connection — will sync on reconnect.");
+    return;
+  }
   try {
     const res = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/primary/events/${entry.gcalEventId}`,
@@ -8728,13 +8855,16 @@ async function patchGCal(entry, silent = false) {
     );
     checkGCalAuthExpired(res);
     if (res.ok) {
+      gcalMarkPending(entry, false);
       if (!silent) toast(`Calendar event updated for "${entry.name}".`);
-    } else if (res.status === 404) {
+    } else if (res.status === 404 || res.status === 410) {
       // Event was deleted from GCal manually — clear stale ID and create fresh
+      // (Google answers a deleted event with 404 or 410 depending on its age)
       entry.gcalEventId = null;
       save();
-      await pushToGCal(entry, silent);
+      await pushToGCalOnce(entry, silent);
     } else {
+      gcalMarkPending(entry, true);
       const err = await res.json().catch(() => null);
       const msg = err?.error?.message || "";
       if (res.status === 400 && /invalid start time/i.test(msg)) {
@@ -8746,7 +8876,7 @@ async function patchGCal(entry, silent = false) {
         await deleteFromGCal(entry, true);
         entry.gcalEventId = null;
         save();
-        await pushToGCal(entry, silent);
+        await pushToGCalOnce(entry, silent);
       } else if (!silent)
         toast("Calendar update failed — " + (msg || `HTTP ${res.status}`));
     }
@@ -9109,11 +9239,20 @@ function mergeSync(remote) {
       place(l);
       return;
     }
+    // The newer copy wins, but must not drop a Google event/task id the other
+    // copy has: an id-less winner would be pushed again and duplicate it.
+    const keepIds = (win, lose) => {
+      ["gcalEventId", "gcalTaskId"].forEach((k) => {
+        if (!win.e[k] && lose.e[k]) win.e[k] = lose.e[k];
+      });
+    };
     if (rt > lt) {
       pulled++;
+      keepIds(r, l);
       place(r);
     } else {
       if (lt > rt) pushed++;
+      keepIds(l, r);
       place(l);
     }
   });
@@ -9351,9 +9490,14 @@ function updateSyncStatusUI(override) {
     return;
   }
   const last = localStorage.getItem("wl2dev_last_sync");
-  el.textContent = last
-    ? "Last synced " + new Date(last).toLocaleString()
-    : "Not synced yet";
+  const pend = gcalPendingCount();
+  el.textContent =
+    (last
+      ? "Last synced " + new Date(last).toLocaleString()
+      : "Not synced yet") +
+    (pend
+      ? ` · ${pend} ${pend === 1 ? "entry" : "entries"} not in Google Calendar yet`
+      : "");
 }
 
 // ── Settings ───────────────────────────────────────────────────────────────
@@ -9738,9 +9882,19 @@ function saveSettings() {
 // ── Changelog ──────────────────────────────────────────────────────────────
 const CHANGELOG = [
   {
+    version: "v1.9.5",
+    date: "September 24, 2026",
+    latest: true,
+    items: [
+      "Fixed: entries could appear twice on Google Calendar — reconnecting (or a sign-in delivered twice) could run two syncs at once, and a lost reply from Google could trigger a second create. Each entry is now pushed one at a time, tagged, and looked up before creating",
+      "Fixed: an entry whose Google event was deleted in Google Calendar never came back, even after editing — reconnecting now checks each upcoming entry's event and recreates any that are gone",
+      "Sync no longer silently skips an update when Google is disconnected — the entry is marked \"not in Google Calendar yet\" (count shown next to the sync status) and retried on the next reconnect",
+    ],
+  },
+  {
     version: "v1.9.4",
     date: "September 23, 2026",
-    latest: true,
+    latest: false,
     items: [
       "Fixed: all-day entries synced to Google Calendar were created with no duration, so they never appeared in the iOS Calendar widget (they showed in the Google Calendar app itself) — single-day all-day entries now cover a full day",
     ],
